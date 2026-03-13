@@ -34,6 +34,7 @@ const ASSETS = {
   platGym:      "assets/platform/plat_gym.png",
   platVacation: "assets/platform/plat_vacation.png",
   platWingfoil: "assets/platform/plat_wingfoil.png",
+  doctorAnim:   "assets/player/michael_doctor_anim.png",
   jump:     "assets/audio/jump.wav",
 } as const;
 
@@ -82,6 +83,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image("bg_gym",      ASSETS.bgGym);
     this.load.image("bg_vacation", ASSETS.bgVacation);
     this.load.image("bg_wingfoil", ASSETS.bgWingfoil);
+
+    // --- Doctor animation spritesheet (5 frames × 308px wide) ---
+    this.load.spritesheet("doc_anim", ASSETS.doctorAnim, {
+      frameWidth:  308,
+      frameHeight: 1024,
+    });
 
     // --- Themed platforms (one per avatar) ---
     this.load.image("plat_doctor",   ASSETS.platDoctor);

@@ -56,6 +56,10 @@ export class GameScene extends Phaser.Scene {
   private jumpSound?: Phaser.Sound.BaseSound;
   private isDead: boolean = false;
 
+  // Doctor animation state
+  private isDoctorAnim = false;
+  private docAnimState = "";
+
   constructor() {
     super({ key: "GameScene" });
   }
@@ -71,6 +75,8 @@ export class GameScene extends Phaser.Scene {
     this.cameraY       = 0;
     this.lastLandedPlatform = null;
     this.highestPlatformY   = 0;
+    this.isDoctorAnim       = false;
+    this.docAnimState       = "";
     this.leftPointers.clear();
     this.rightPointers.clear();
 
@@ -115,12 +121,48 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = Math.min(this.highestPlatformY, nextY);
     }
 
-    // ── Player — use the avatarKey already resolved above ──
-    this.player = this.physics.add.sprite(width / 2, startPlatY - 50, avatarKey);
+    // ── Player — doctor uses animated spritesheet, others use static sprite ──
+    this.isDoctorAnim = avatarKey === "avatar_doctor";
+    const playerKey   = this.isDoctorAnim ? "doc_anim" : avatarKey;
+
+    this.player = this.physics.add.sprite(width / 2, startPlatY - 50, playerKey);
     this.player.setCollideWorldBounds(false);
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
-    this.player.setScale((height * 0.11) / this.player.height);
+    // Doctor frames are 308×1024 with transparent headroom — boost scale slightly
+    const scaleH = this.isDoctorAnim ? height * 0.13 : height * 0.11;
+    this.player.setScale(scaleH / this.player.height);
+
+    // ── Doctor animations (create once; global AnimationManager persists) ──
+    if (this.isDoctorAnim) {
+      if (!this.anims.exists("doc_jump")) {
+        this.anims.create({
+          key:       "doc_jump",
+          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [2, 3] }),
+          frameRate: 7,
+          repeat:    -1,
+        });
+        this.anims.create({
+          key:       "doc_fall",
+          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [3] }),
+          frameRate: 1,
+          repeat:    0,
+        });
+        this.anims.create({
+          key:       "doc_land",
+          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [1, 0] }),
+          frameRate: 14,
+          repeat:    0,
+        });
+      }
+      // When doc_land finishes, release control back to the velocity-based state machine
+      this.player.on("animationcomplete-doc_land", () => {
+        this.docAnimState = "";
+      });
+
+      this.player.play("doc_jump");
+      this.docAnimState = "jump";
+    }
 
     this.cameras.main.setBackgroundColor(0x0a1628);
     this.cameras.main.scrollY = 0;
@@ -263,6 +305,16 @@ export class GameScene extends Phaser.Scene {
       this.player.x = -this.player.displayWidth / 2;
     }
 
+    // ── Doctor animation: switch frames based on vertical velocity ──
+    if (this.isDoctorAnim && this.docAnimState !== "land") {
+      const vy    = (this.player.body as Phaser.Physics.Arcade.Body).velocity.y;
+      const state = vy < 0 ? "jump" : "fall";
+      if (state !== this.docAnimState) {
+        this.docAnimState = state;
+        this.player.play(state === "jump" ? "doc_jump" : "doc_fall", true);
+      }
+    }
+
     // Generate platforms ahead
     const genY = this.cameraY - PLATFORMS.generateAheadY;
     while (this.highestPlatformY > genY) {
@@ -310,6 +362,13 @@ export class GameScene extends Phaser.Scene {
     // Auto-jump
     this.player.setVelocityY(PHYSICS.jumpVelocity);
     this.jumpSound?.play();
+
+    // Doctor land animation — brief crouch flash before jump anim takes over
+    if (this.isDoctorAnim) {
+      this.docAnimState = "land";
+      this.player.play("doc_land", true);
+      // update() will switch to "jump" once vy goes negative (~next frame)
+    }
 
     // Score
     if (plat !== this.lastLandedPlatform) {
