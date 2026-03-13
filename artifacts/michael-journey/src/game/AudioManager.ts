@@ -6,12 +6,23 @@
 class AudioManager {
   private ctx: AudioContext | null = null;
 
+  /** Pre-create and resume the context inside a user-gesture handler so
+   *  iOS/Chrome unblock it before the first sound effect fires. */
+  unlock() {
+    try {
+      if (!this.ctx || this.ctx.state === "closed") {
+        this.ctx = new AudioContext();
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+    } catch { /* ignore */ }
+  }
+
   private getCtx(): AudioContext | null {
     try {
       if (!this.ctx || this.ctx.state === "closed") {
         this.ctx = new AudioContext();
       }
-      if (this.ctx.state === "suspended") this.ctx.resume();
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
       return this.ctx;
     } catch {
       return null;

@@ -187,21 +187,36 @@ export class MusicPlayer {
   get playing() { return this.isPlaying; }
   get currentTheme() { return this.theme; }
 
+  /**
+   * Call this from ANY direct user-gesture handler (tap / click).
+   * iOS/Chrome block AudioContext until a gesture has fired —
+   * pre-creating and resuming the context here guarantees music
+   * will play when start() is later called from a scene transition.
+   */
+  unlock() {
+    try {
+      if (!this.ctx || this.ctx.state === "closed") {
+        this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+    } catch { /* ignore */ }
+  }
+
   // ── Internal ────────────────────────────────────────────────────────────────
 
   private ensureContext() {
-    if (!this.ctx) {
+    if (!this.ctx || this.ctx.state === "closed") {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.masterGain = null; // force gain node rebuild on new context
     }
     const cfg = THEMES[this.theme];
     if (!this.masterGain || this.masterGain.gain.value !== cfg.masterVol) {
-      // Recreate gain node when theme changes (different volume)
       const gain = this.ctx.createGain();
       gain.gain.value = cfg.masterVol;
       gain.connect(this.ctx.destination);
       this.masterGain = gain;
     }
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
   }
 
   private _start() {

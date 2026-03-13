@@ -3,6 +3,8 @@
  */
 
 import Phaser from "phaser";
+import { MusicPlayer } from "../MusicPlayer";
+import { audioManager } from "../AudioManager";
 import { getTopScores } from "../ScoreStore";
 
 export class MenuScene extends Phaser.Scene {
@@ -74,6 +76,9 @@ export class MenuScene extends Phaser.Scene {
     btnBg.on("pointerout",   () => btnBg.setFillStyle(0xff6b35));
     btnBg.on("pointerdown",  () => {
       btnBg.setFillStyle(0xdd5520);
+      // Unlock Web Audio on iOS/Chrome — must happen inside a direct gesture handler
+      MusicPlayer.getInstance().unlock();
+      audioManager.unlock();
       this.time.delayedCall(130, () => this.scene.start("AvatarScene"));
     });
 
