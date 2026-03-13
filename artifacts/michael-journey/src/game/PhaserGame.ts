@@ -10,6 +10,7 @@
 import Phaser from "phaser";
 import { BootScene } from "./scenes/BootScene";
 import { MenuScene } from "./scenes/MenuScene";
+import { AvatarScene } from "./scenes/AvatarScene";
 import { GameScene } from "./scenes/GameScene";
 import { GameOverScene } from "./scenes/GameOverScene";
 
@@ -44,7 +45,7 @@ export function createPhaserGame(parent: HTMLElement): Phaser.Game {
     backgroundColor: "#1a1a2e",
 
     // All scenes in load order
-    scene: [BootScene, MenuScene, GameScene, GameOverScene],
+    scene: [BootScene, MenuScene, AvatarScene, GameScene, GameOverScene],
 
     // Better pixel rendering for the pixel-art look
     render: {

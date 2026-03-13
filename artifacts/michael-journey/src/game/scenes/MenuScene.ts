@@ -132,7 +132,7 @@ export class MenuScene extends Phaser.Scene {
     btnBg.on("pointerout",   () => btnBg.setFillStyle(0xff6b35));
     btnBg.on("pointerdown",  () => {
       btnBg.setFillStyle(0xdd5520);
-      this.time.delayedCall(130, () => this.scene.start("GameScene"));
+      this.time.delayedCall(130, () => this.scene.start("AvatarScene"));
     });
 
     // ── Controls hint ──

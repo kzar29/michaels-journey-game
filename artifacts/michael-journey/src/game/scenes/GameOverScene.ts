@@ -121,7 +121,7 @@ export class GameOverScene extends Phaser.Scene {
     restartBg.on("pointerout",   () => restartBg.setFillStyle(0xff6b35));
     restartBg.on("pointerdown",  () => {
       restartBg.setFillStyle(0xdd5520);
-      this.time.delayedCall(120, () => this.scene.start("GameScene"));
+      this.time.delayedCall(120, () => this.scene.start("AvatarScene"));
     });
 
     // ── MENU button ──
