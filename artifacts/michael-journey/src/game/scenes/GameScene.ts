@@ -20,9 +20,13 @@ import { audioManager } from "../AudioManager";
 
 // Speed and gap values per level (level 0 = easiest, capped at last entry)
 const LEVEL_DURATION  = 10; // seconds per level step
-const LEVEL_SPEEDS    = [55,  75, 100, 130, 165, 200, 220];
-const LEVEL_MIN_GAPS  = [90,  95, 100, 108, 115, 122, 130];
+const LEVEL_SPEEDS    = [55,  75,  100, 130, 165, 200, 220];
+const LEVEL_MIN_GAPS  = [90,  95,  100, 108, 115, 122, 130];
 const LEVEL_MAX_GAPS  = [140, 148, 158, 170, 182, 195, 210];
+// Jump velocity scales up with scroll speed so the player always has
+// ~120px of effective upward clearance relative to the moving camera.
+// Formula: V = 2S + sqrt(4S² + 2·g·120)  where g=800
+const LEVEL_JUMPS     = [600, 630,  700, 790, 900, 1010, 1080];
 
 const PLAT_MAP: Record<string, string> = {
   avatar_doctor:   "plat_doctor",
@@ -63,6 +67,7 @@ export class GameScene extends Phaser.Scene {
   private currentLevel: number = 0;
   private currentMinGap: number = LEVEL_MIN_GAPS[0];
   private currentMaxGap: number = LEVEL_MAX_GAPS[0];
+  private currentJumpVelocity: number = -LEVEL_JUMPS[0];
 
   // Doctor animation state
   private isDoctorAnim = false;
@@ -85,9 +90,10 @@ export class GameScene extends Phaser.Scene {
     this.highestPlatformY   = 0;
     this.isDoctorAnim       = false;
     this.docAnimState       = "";
-    this.currentLevel       = 0;
-    this.currentMinGap      = LEVEL_MIN_GAPS[0];
-    this.currentMaxGap      = LEVEL_MAX_GAPS[0];
+    this.currentLevel         = 0;
+    this.currentMinGap        = LEVEL_MIN_GAPS[0];
+    this.currentMaxGap        = LEVEL_MAX_GAPS[0];
+    this.currentJumpVelocity  = -LEVEL_JUMPS[0];
     this.leftPointers.clear();
     this.rightPointers.clear();
 
@@ -248,7 +254,7 @@ export class GameScene extends Phaser.Scene {
 
     // Initial launch jump
     this.time.delayedCall(100, () => {
-      if (!this.isDead) this.player.setVelocityY(PHYSICS.jumpVelocity);
+      if (!this.isDead) this.player.setVelocityY(this.currentJumpVelocity);
     });
   }
 
@@ -286,10 +292,11 @@ export class GameScene extends Phaser.Scene {
     const maxIdx  = LEVEL_SPEEDS.length - 1;
     const newLvl  = Math.min(Math.floor(this.elapsed / LEVEL_DURATION), maxIdx);
     if (newLvl !== this.currentLevel) {
-      this.currentLevel    = newLvl;
-      this.currentMinGap   = LEVEL_MIN_GAPS[newLvl];
-      this.currentMaxGap   = LEVEL_MAX_GAPS[newLvl];
-      this.scrollSpeed     = LEVEL_SPEEDS[newLvl];
+      this.currentLevel         = newLvl;
+      this.currentMinGap        = LEVEL_MIN_GAPS[newLvl];
+      this.currentMaxGap        = LEVEL_MAX_GAPS[newLvl];
+      this.scrollSpeed          = LEVEL_SPEEDS[newLvl];
+      this.currentJumpVelocity  = -LEVEL_JUMPS[newLvl];
       this.showLevelUp(newLvl + 1);
     }
 
@@ -411,8 +418,8 @@ export class GameScene extends Phaser.Scene {
   ) {
     const plat = platform as Phaser.Physics.Arcade.Sprite;
 
-    // Auto-jump
-    this.player.setVelocityY(PHYSICS.jumpVelocity);
+    // Auto-jump (velocity scales with level to stay playable at high speeds)
+    this.player.setVelocityY(this.currentJumpVelocity);
     this.jumpSound?.play();
     audioManager.playBounce();
 
