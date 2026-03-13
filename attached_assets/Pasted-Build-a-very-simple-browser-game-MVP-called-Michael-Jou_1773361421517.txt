@@ -1,0 +1,78 @@
+Build a very simple browser game MVP called "Michael Journey" using Phaser.js.
+
+The game should be mobile-first but also work on desktop browser.
+
+Game concept:
+- Cute, funny, slightly chaotic arcade-style endless vertical platform jumper
+- The player controls a full-body pixel-art character named Michael
+- The goal is to jump upward across platforms and survive as long as possible
+- The score should increase by 1 for each new platform successfully landed on
+- The game ends when the player falls below the screen
+
+Core gameplay requirements:
+- Start screen with the title "Michael Journey" and a Start button
+- Endless upward-scrolling gameplay
+- Randomly generated platforms
+- Manual jump mechanic
+- Left and right movement
+- Score counter during gameplay
+- Game over screen with final score and Restart button
+- Basic jump sound effect
+- Responsive layout for both phone and desktop
+
+Controls:
+Mobile:
+- Hold left side button/zone to move left
+- Hold right side button/zone to move right
+- Tap jump button to jump
+
+Desktop:
+- A/D or Left/Right arrows to move
+- Spacebar or Up arrow to jump
+
+Visual style:
+- Pixel-art look
+- Cute and simple
+- Funny and arcade/high-score focused
+- Keep the UI clean and readable on phone screens
+- Portrait-friendly for mobile, but should still work on desktop
+
+MVP scope only:
+- No enemies
+- No obstacles
+- No collectibles
+- No power-ups
+- No story mode
+- No advanced animation system yet
+
+Technical requirements:
+- Use Phaser.js
+- Organize the project clearly
+- Add comments so I can edit later
+- Use placeholder assets if needed, but structure everything so I can easily replace assets later
+
+Important asset structure:
+Please create the following folders and wire the code to load assets from them:
+- /assets/player/
+- /assets/platform/
+- /assets/audio/
+- /assets/ui/
+- /assets/background/
+
+Use placeholder files initially, but set up the code so I can later replace them with:
+- /assets/player/michael.png
+- /assets/platform/platform.png
+- /assets/audio/jump.wav
+
+Important implementation detail:
+Please make the player sprite easy to replace later without changing gameplay code.
+Ideally, define asset paths in one central config or preload section so I can swap the player PNG later.
+
+Please also include:
+- a simple README section in comments or a separate file explaining where I should upload my sprite PNG and jump sound file
+- clear notes on which file controls gravity, jump strength, movement speed, platform spacing, and score logic
+
+Use a single PNG sprite for the player for now, not a sprite sheet.
+The player sprite should support transparent background PNG replacement later.
+
+Please generate the full MVP codebase now.

@@ -4,6 +4,19 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Artifacts
+
+### Michael Journey (`artifacts/michael-journey`)
+
+Endless vertical platform jumper browser game — Phaser.js + React + Vite.
+
+- **Stack**: Phaser 3, React, Vite, TypeScript
+- **Entry**: `src/pages/Game.tsx` (React wrapper for the Phaser canvas)
+- **Game config**: `src/game/config.ts` — all physics/gameplay tuning values and asset paths
+- **Scenes**: `src/game/scenes/` — BootScene, MenuScene, GameScene, GameOverScene
+- **Assets**: `public/assets/` — player/, platform/, audio/, background/, ui/
+- **Preview path**: `/` (served at root)
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
