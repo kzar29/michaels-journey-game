@@ -30,7 +30,10 @@ const ASSETS = {
   bgGym:      "assets/bg/bg_gym.png",
   bgVacation: "assets/bg/bg_vacation.png",
   bgWingfoil: "assets/bg/bg_wingfoil.png",
-  platform: "assets/platform/platform.png",
+  platDoctor:   "assets/platform/plat_doctor.png",
+  platGym:      "assets/platform/plat_gym.png",
+  platVacation: "assets/platform/plat_vacation.png",
+  platWingfoil: "assets/platform/plat_wingfoil.png",
   jump:     "assets/audio/jump.wav",
 } as const;
 
@@ -80,8 +83,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image("bg_vacation", ASSETS.bgVacation);
     this.load.image("bg_wingfoil", ASSETS.bgWingfoil);
 
-    // --- Platform ---
-    this.load.image("platform", ASSETS.platform);
+    // --- Themed platforms (one per avatar) ---
+    this.load.image("plat_doctor",   ASSETS.platDoctor);
+    this.load.image("plat_gym",      ASSETS.platGym);
+    this.load.image("plat_vacation", ASSETS.platVacation);
+    this.load.image("plat_wingfoil", ASSETS.platWingfoil);
 
     // --- Jump sound (uncomment when you add jump.wav) ---
     // this.load.audio("jump", ASSETS.jump);

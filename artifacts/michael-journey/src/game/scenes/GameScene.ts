@@ -21,13 +21,12 @@ const SCROLL_SPEED_START = 55;
 const SCROLL_SPEED_ACCEL = 3;
 const SCROLL_SPEED_MAX   = 220;
 
-const PLATFORM_TINTS = [
-  0x00c4aa, // teal (ocean)
-  0xff6b35, // coral (sunset)
-  0xffd166, // gold (sand/beach)
-  0x44cc88, // green (cactus/gym)
-  0x55aaff, // sky blue (kite)
-];
+const PLAT_MAP: Record<string, string> = {
+  avatar_doctor:   "plat_doctor",
+  avatar_gym:      "plat_gym",
+  avatar_vacation: "plat_vacation",
+  avatar_wingfoil: "plat_wingfoil",
+};
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -51,7 +50,7 @@ export class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
   private lastLandedPlatform: Phaser.Physics.Arcade.Sprite | null = null;
-  private platTintIndex: number = 0;
+  private platKey: string = "plat_doctor";
 
   private bgTile!: Phaser.GameObjects.TileSprite;
   private jumpSound?: Phaser.Sound.BaseSound;
@@ -72,7 +71,6 @@ export class GameScene extends Phaser.Scene {
     this.cameraY       = 0;
     this.lastLandedPlatform = null;
     this.highestPlatformY   = 0;
-    this.platTintIndex      = 0;
     this.leftPointers.clear();
     this.rightPointers.clear();
 
@@ -85,6 +83,7 @@ export class GameScene extends Phaser.Scene {
       avatar_wingfoil: "bg_wingfoil",
     };
     const bgKey = BG_MAP[avatarKey] ?? "bg_doctor";
+    this.platKey = PLAT_MAP[avatarKey] ?? "plat_doctor";
 
     // ── Themed tile background (parallax-scrolled in update()) ──
     // The source images are 256 px wide; tileScaleX stretches them to fill the canvas.
@@ -292,11 +291,13 @@ export class GameScene extends Phaser.Scene {
     this.speedText.setText(`🏄 Lv ${lvl}`);
   }
 
-  private spawnPlatform(x: number, y: number, isStart: boolean = false) {
-    const plat = this.platformGroup.create(x, y, "platform") as Phaser.Physics.Arcade.Sprite;
-    plat.setScale(PLATFORMS.width / plat.width, PLATFORMS.height / plat.height).refreshBody();
+  private spawnPlatform(x: number, y: number, _isStart: boolean = false) {
+    const plat = this.platformGroup.create(x, y, this.platKey) as Phaser.Physics.Arcade.Sprite;
+    // Scale to PLATFORMS.width; cap display height so platforms stay flat-ish
+    const naturalH = (plat.height / plat.width) * PLATFORMS.width;
+    const displayH = Math.min(naturalH, 40);
+    plat.setScale(PLATFORMS.width / plat.width, displayH / plat.height).refreshBody();
     plat.setDepth(5);
-    plat.setTint(isStart ? 0xffd166 : PLATFORM_TINTS[this.platTintIndex++ % PLATFORM_TINTS.length]);
     return plat;
   }
 
@@ -316,10 +317,9 @@ export class GameScene extends Phaser.Scene {
       this.score += SCORE.pointsPerPlatform;
       this.scoreText.setText(`Score: ${this.score}`);
 
-      const prevTint = plat.tintTopLeft;
-      plat.setTint(0xffffff);
-      this.time.delayedCall(120, () => {
-        if (plat.active) plat.setTint(prevTint);
+      plat.setAlpha(0.45);
+      this.time.delayedCall(110, () => {
+        if (plat.active) plat.setAlpha(1);
       });
     }
   }
