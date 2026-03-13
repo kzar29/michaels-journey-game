@@ -412,7 +412,7 @@ export class GameScene extends Phaser.Scene {
     const plat = this.platformGroup.create(x, y, this.platKey) as Phaser.Physics.Arcade.Sprite;
     // Scale to PLATFORMS.width; cap display height so platforms stay flat-ish
     const naturalH = (plat.height / plat.width) * PLATFORMS.width;
-    const displayH = Math.min(naturalH, 40);
+    const displayH = Math.min(naturalH, 52);
     plat.setScale(PLATFORMS.width / plat.width, displayH / plat.height).refreshBody();
     plat.setDepth(5);
     return plat;
