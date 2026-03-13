@@ -150,28 +150,34 @@ export class GameScene extends Phaser.Scene {
     const scaleH = this.isDoctorAnim ? height * 0.13 : height * 0.11;
     this.player.setScale(scaleH / this.player.height);
 
-    // ── Doctor animations (create once; global AnimationManager persists) ──
+    // ── Doctor animations (recreate each scene start so frame changes take effect) ──
     if (this.isDoctorAnim) {
-      if (!this.anims.exists("doc_jump")) {
-        this.anims.create({
-          key:       "doc_jump",
-          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [2, 3] }),
-          frameRate: 7,
-          repeat:    -1,
-        });
-        this.anims.create({
-          key:       "doc_fall",
-          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [3] }),
-          frameRate: 1,
-          repeat:    0,
-        });
-        this.anims.create({
-          key:       "doc_land",
-          frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [1, 0] }),
-          frameRate: 14,
-          repeat:    0,
-        });
-      }
+      ["doc_jump", "doc_fall", "doc_land"].forEach(k => {
+        if (this.anims.exists(k)) this.anims.remove(k);
+      });
+      // Frame guide (new green-screen spritesheet):
+      //  0 = standing idle   1 = crouch/land
+      //  2 = jump ascending  3 = falling / peak
+      //  4 = thumbs up
+      this.anims.create({
+        key:       "doc_jump",
+        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [2, 3] }),
+        frameRate: 8,
+        repeat:    -1,
+      });
+      this.anims.create({
+        key:       "doc_fall",
+        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [3] }),
+        frameRate: 1,
+        repeat:    0,
+      });
+      this.anims.create({
+        key:       "doc_land",
+        // crouch → thumbs-up → idle — brief celebratory flash on every landing
+        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [1, 4, 0] }),
+        frameRate: 14,
+        repeat:    0,
+      });
       // When doc_land finishes, release control back to the velocity-based state machine
       this.player.on("animationcomplete-doc_land", () => {
         this.docAnimState = "";
