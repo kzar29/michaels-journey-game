@@ -17,9 +17,11 @@
 import Phaser from "phaser";
 import { PHYSICS, PLATFORMS, WORLD, SCORE } from "../config";
 
-const SCROLL_SPEED_START = 55;
-const SCROLL_SPEED_ACCEL = 3;
-const SCROLL_SPEED_MAX   = 220;
+// Speed and gap values per level (level 0 = easiest, capped at last entry)
+const LEVEL_DURATION  = 10; // seconds per level step
+const LEVEL_SPEEDS    = [55,  75, 100, 130, 165, 200, 220];
+const LEVEL_MIN_GAPS  = [90,  95, 100, 108, 115, 122, 130];
+const LEVEL_MAX_GAPS  = [140, 148, 158, 170, 182, 195, 210];
 
 const PLAT_MAP: Record<string, string> = {
   avatar_doctor:   "plat_doctor",
@@ -34,7 +36,7 @@ export class GameScene extends Phaser.Scene {
   private highestPlatformY: number = 0;
 
   private cameraY: number = 0;
-  private scrollSpeed: number = SCROLL_SPEED_START;
+  private scrollSpeed: number = LEVEL_SPEEDS[0];
   private elapsed: number = 0;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -56,6 +58,11 @@ export class GameScene extends Phaser.Scene {
   private jumpSound?: Phaser.Sound.BaseSound;
   private isDead: boolean = false;
 
+  // Level / difficulty
+  private currentLevel: number = 0;
+  private currentMinGap: number = LEVEL_MIN_GAPS[0];
+  private currentMaxGap: number = LEVEL_MAX_GAPS[0];
+
   // Doctor animation state
   private isDoctorAnim = false;
   private docAnimState = "";
@@ -71,12 +78,15 @@ export class GameScene extends Phaser.Scene {
     this.isDead        = false;
     this.score         = 0;
     this.elapsed       = 0;
-    this.scrollSpeed   = SCROLL_SPEED_START;
+    this.scrollSpeed   = LEVEL_SPEEDS[0];
     this.cameraY       = 0;
     this.lastLandedPlatform = null;
     this.highestPlatformY   = 0;
     this.isDoctorAnim       = false;
     this.docAnimState       = "";
+    this.currentLevel       = 0;
+    this.currentMinGap      = LEVEL_MIN_GAPS[0];
+    this.currentMaxGap      = LEVEL_MAX_GAPS[0];
     this.leftPointers.clear();
     this.rightPointers.clear();
 
@@ -270,12 +280,17 @@ export class GameScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const dt = delta / 1000;
 
-    // Speed ramp
+    // Level-based difficulty step-up
     this.elapsed += dt;
-    this.scrollSpeed = Math.min(
-      SCROLL_SPEED_START + this.elapsed * SCROLL_SPEED_ACCEL,
-      SCROLL_SPEED_MAX
-    );
+    const maxIdx  = LEVEL_SPEEDS.length - 1;
+    const newLvl  = Math.min(Math.floor(this.elapsed / LEVEL_DURATION), maxIdx);
+    if (newLvl !== this.currentLevel) {
+      this.currentLevel    = newLvl;
+      this.currentMinGap   = LEVEL_MIN_GAPS[newLvl];
+      this.currentMaxGap   = LEVEL_MAX_GAPS[newLvl];
+      this.scrollSpeed     = LEVEL_SPEEDS[newLvl];
+      this.showLevelUp(newLvl + 1);
+    }
 
     // Auto-scroll
     this.cameraY -= this.scrollSpeed * dt;
@@ -298,11 +313,16 @@ export class GameScene extends Phaser.Scene {
       this.player.setVelocityX(this.player.body!.velocity.x * 0.75);
     }
 
-    // Horizontal wrap
-    if (this.player.x < -this.player.displayWidth / 2) {
-      this.player.x = width + this.player.displayWidth / 2;
-    } else if (this.player.x > width + this.player.displayWidth / 2) {
-      this.player.x = -this.player.displayWidth / 2;
+    // Horizontal clamp — keep player fully on screen
+    const halfW = this.player.displayWidth / 2;
+    if (this.player.x < halfW) {
+      this.player.x = halfW;
+      if ((this.player.body as Phaser.Physics.Arcade.Body).velocity.x < 0)
+        this.player.setVelocityX(0);
+    } else if (this.player.x > width - halfW) {
+      this.player.x = width - halfW;
+      if ((this.player.body as Phaser.Physics.Arcade.Body).velocity.x > 0)
+        this.player.setVelocityX(0);
     }
 
     // ── Doctor animation: switch frames based on vertical velocity ──
@@ -315,10 +335,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Generate platforms ahead
+    // Generate platforms ahead (gaps grow each level)
     const genY = this.cameraY - PLATFORMS.generateAheadY;
     while (this.highestPlatformY > genY) {
-      const gap  = Phaser.Math.Between(PLATFORMS.minGapY, PLATFORMS.maxGapY);
+      const gap  = Phaser.Math.Between(this.currentMinGap, this.currentMaxGap);
       const newY = this.highestPlatformY - gap;
       this.spawnPlatform(
         Phaser.Math.Between(PLATFORMS.width / 2 + 10, width - PLATFORMS.width / 2 - 10),
@@ -339,8 +359,31 @@ export class GameScene extends Phaser.Scene {
     }
 
     // HUD
-    const lvl = Math.floor(this.elapsed / 10) + 1;
-    this.speedText.setText(`🏄 Lv ${lvl}`);
+    this.speedText.setText(`🏄 Lv ${this.currentLevel + 1}`);
+  }
+
+  private showLevelUp(level: number) {
+    const { width, height } = this.scale;
+    const txt = this.add
+      .text(width / 2, height * 0.42, `LEVEL ${level}! ⚡`, {
+        fontFamily: "monospace",
+        fontSize: "30px",
+        color: "#ffd166",
+        stroke: "#000000",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(200);
+
+    this.tweens.add({
+      targets: txt,
+      alpha: 0,
+      y: height * 0.30,
+      duration: 1400,
+      ease: "Power2",
+      onComplete: () => txt.destroy(),
+    });
   }
 
   private spawnPlatform(x: number, y: number, _isStart: boolean = false) {
