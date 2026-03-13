@@ -141,9 +141,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     // ── Player — doctor & gym use animated spritesheets, others use static ──
-    if      (avatarKey === "avatar_doctor") this.animPrefix = "doc";
-    else if (avatarKey === "avatar_gym")    this.animPrefix = "gym";
-    else                                    this.animPrefix = "";
+    if      (avatarKey === "avatar_doctor")   this.animPrefix = "doc";
+    else if (avatarKey === "avatar_gym")      this.animPrefix = "gym";
+    else if (avatarKey === "avatar_vacation") this.animPrefix = "vacation";
+    else                                      this.animPrefix = "";
 
     const playerKey = this.animPrefix ? `${this.animPrefix}_anim` : avatarKey;
 

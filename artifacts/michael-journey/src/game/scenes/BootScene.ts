@@ -37,6 +37,7 @@ const ASSETS = {
   platWingfoil: "assets/platform/plat_wingfoil.png",
   doctorAnim:   "assets/player/michael_doctor_anim.png",
   gymAnim:      "assets/player/michael_gym_anim.png",
+  vacationAnim: "assets/player/michael_vacation_anim.png",
   jump:     "assets/audio/jump.wav",
 } as const;
 
@@ -97,6 +98,12 @@ export class BootScene extends Phaser.Scene {
 
     // --- Gym animation spritesheet (5 frames × 308px wide) ---
     this.load.spritesheet("gym_anim", ASSETS.gymAnim, {
+      frameWidth:  308,
+      frameHeight: 1024,
+    });
+
+    // --- Vacation animation spritesheet (5 frames × 308px wide) ---
+    this.load.spritesheet("vacation_anim", ASSETS.vacationAnim, {
       frameWidth:  308,
       frameHeight: 1024,
     });
