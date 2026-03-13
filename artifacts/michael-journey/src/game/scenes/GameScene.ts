@@ -70,9 +70,9 @@ export class GameScene extends Phaser.Scene {
   private currentMaxGap: number = LEVEL_MAX_GAPS[0];
   private currentJumpVelocity: number = -LEVEL_JUMPS[0];
 
-  // Doctor animation state
-  private isDoctorAnim = false;
-  private docAnimState = "";
+  // Animated character state ("doc" | "gym" | "" for static sprites)
+  private animPrefix   = "";
+  private charAnimState = "";
 
   constructor() {
     super({ key: "GameScene" });
@@ -90,8 +90,8 @@ export class GameScene extends Phaser.Scene {
     this.lastLandedPlatform = null;
     this.highestPlatformY   = 0;
     this.lastPlatformX      = 0;
-    this.isDoctorAnim       = false;
-    this.docAnimState       = "";
+    this.animPrefix         = "";
+    this.charAnimState      = "";
     this.currentLevel         = 0;
     this.currentMinGap        = LEVEL_MIN_GAPS[0];
     this.currentMaxGap        = LEVEL_MAX_GAPS[0];
@@ -140,53 +140,51 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = Math.min(this.highestPlatformY, nextY);
     }
 
-    // ── Player — doctor uses animated spritesheet, others use static sprite ──
-    this.isDoctorAnim = avatarKey === "avatar_doctor";
-    const playerKey   = this.isDoctorAnim ? "doc_anim" : avatarKey;
+    // ── Player — doctor & gym use animated spritesheets, others use static ──
+    if      (avatarKey === "avatar_doctor") this.animPrefix = "doc";
+    else if (avatarKey === "avatar_gym")    this.animPrefix = "gym";
+    else                                    this.animPrefix = "";
+
+    const playerKey = this.animPrefix ? `${this.animPrefix}_anim` : avatarKey;
 
     this.player = this.physics.add.sprite(width / 2, startPlatY - 50, playerKey);
     this.player.setCollideWorldBounds(false);
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
-    // Doctor frames are 308×1024 with transparent headroom — boost scale slightly
-    const scaleH = this.isDoctorAnim ? height * 0.14 : height * 0.12;
+    // Animated frames have tall transparent headroom — scale slightly larger
+    const scaleH = this.animPrefix ? height * 0.14 : height * 0.12;
     this.player.setScale(scaleH / this.player.height);
 
-    // ── Doctor animations (recreate each scene start so frame changes take effect) ──
-    if (this.isDoctorAnim) {
-      ["doc_jump", "doc_fall", "doc_land"].forEach(k => {
+    // ── Animated character setup (doc / gym share identical 5-frame layout) ──
+    // Frame guide:  0=idle  1=crouch  2=jump-up  3=falling  4=thumbs-up
+    if (this.animPrefix) {
+      const p = this.animPrefix;
+      [p+"_jump", p+"_fall", p+"_land"].forEach(k => {
         if (this.anims.exists(k)) this.anims.remove(k);
       });
-      // Frame guide (new green-screen spritesheet):
-      //  0 = standing idle   1 = crouch/land
-      //  2 = jump ascending  3 = falling / peak
-      //  4 = thumbs up
       this.anims.create({
-        key:       "doc_jump",
-        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [2, 3] }),
+        key:       p+"_jump",
+        frames:    this.anims.generateFrameNumbers(p+"_anim", { frames: [2, 3] }),
         frameRate: 8,
         repeat:    -1,
       });
       this.anims.create({
-        key:       "doc_fall",
-        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [3] }),
+        key:       p+"_fall",
+        frames:    this.anims.generateFrameNumbers(p+"_anim", { frames: [3] }),
         frameRate: 1,
         repeat:    0,
       });
       this.anims.create({
-        key:       "doc_land",
-        // crouch → thumbs-up → idle — brief celebratory flash on every landing
-        frames:    this.anims.generateFrameNumbers("doc_anim", { frames: [1, 4, 0] }),
+        key:       p+"_land",
+        frames:    this.anims.generateFrameNumbers(p+"_anim", { frames: [1, 4, 0] }),
         frameRate: 14,
         repeat:    0,
       });
-      // When doc_land finishes, release control back to the velocity-based state machine
-      this.player.on("animationcomplete-doc_land", () => {
-        this.docAnimState = "";
+      this.player.on(`animationcomplete-${p}_land`, () => {
+        this.charAnimState = "";
       });
-
-      this.player.play("doc_jump");
-      this.docAnimState = "jump";
+      this.player.play(p+"_jump");
+      this.charAnimState = "jump";
     }
 
     this.cameras.main.setBackgroundColor(0x0a1628);
@@ -348,13 +346,14 @@ export class GameScene extends Phaser.Scene {
         this.player.setVelocityX(0);
     }
 
-    // ── Doctor animation: switch frames based on vertical velocity ──
-    if (this.isDoctorAnim && this.docAnimState !== "land") {
+    // ── Animated character: switch frames based on vertical velocity ──
+    if (this.animPrefix && this.charAnimState !== "land") {
+      const p     = this.animPrefix;
       const vy    = (this.player.body as Phaser.Physics.Arcade.Body).velocity.y;
       const state = vy < 0 ? "jump" : "fall";
-      if (state !== this.docAnimState) {
-        this.docAnimState = state;
-        this.player.play(state === "jump" ? "doc_jump" : "doc_fall", true);
+      if (state !== this.charAnimState) {
+        this.charAnimState = state;
+        this.player.play(state === "jump" ? p+"_jump" : p+"_fall", true);
       }
     }
 
@@ -445,11 +444,10 @@ export class GameScene extends Phaser.Scene {
     this.jumpSound?.play();
     audioManager.playBounce();
 
-    // Doctor land animation — brief crouch flash before jump anim takes over
-    if (this.isDoctorAnim) {
-      this.docAnimState = "land";
-      this.player.play("doc_land", true);
-      // update() will switch to "jump" once vy goes negative (~next frame)
+    // Land animation — brief crouch → thumbs-up flash for animated characters
+    if (this.animPrefix) {
+      this.charAnimState = "land";
+      this.player.play(this.animPrefix + "_land", true);
     }
 
     // Score
