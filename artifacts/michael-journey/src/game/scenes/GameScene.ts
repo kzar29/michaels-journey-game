@@ -80,9 +80,10 @@ export class GameScene extends Phaser.Scene {
     { vx: number; vanishes: boolean }
   > = new Map();
 
-  // Tracks when the player last bounced — prevents head-hit collider from
-  // firing on the same platform the player just jumped off.
-  private lastBounceTime: number = 0;
+  // The platform the player most recently bounced from.
+  // The head-hit collider always ignores THIS platform (the one just left),
+  // but every OTHER platform above blocks the player immediately.
+  private lastBouncePlatform: Phaser.Physics.Arcade.Sprite | null = null;
 
   // Character size selection (persisted across games)
   private charSizeKey: "S" | "M" | "L" = "M";
@@ -120,7 +121,7 @@ export class GameScene extends Phaser.Scene {
     this.leftPointers.clear();
     this.rightPointers.clear();
     this.sizeButtons          = [];
-    this.lastBounceTime       = 0;
+    this.lastBouncePlatform   = null;
 
     // Load persisted size preference (default M)
     const saved = localStorage.getItem("michael_char_size");
@@ -243,13 +244,16 @@ export class GameScene extends Phaser.Scene {
           body.setVelocityY(Math.abs(body.velocity.y) * 0.35 + 40);
         }
       },
-      (playerGO) => {
+      (playerGO, platformGO) => {
         const body = (playerGO as Phaser.Physics.Arcade.Sprite)
           .body as Phaser.Physics.Arcade.Body;
         const vy = body.velocity.y;
         if (vy >= 0) return true; // always allow landing
-        // Rising: allow head-hit only after the grace period
-        return (this.time.now - this.lastBounceTime) > 180;
+        // Rising: block the player on every platform EXCEPT the one just
+        // bounced from (which is the same platform being left, still in contact
+        // for a brief moment before the player clears it).
+        const plat = platformGO as Phaser.Physics.Arcade.Sprite;
+        return plat !== this.lastBouncePlatform;
       },
       this
     );
@@ -539,7 +543,7 @@ export class GameScene extends Phaser.Scene {
 
     // Auto-jump (velocity scales with level to stay playable at high speeds)
     this.player.setVelocityY(this.currentJumpVelocity);
-    this.lastBounceTime = this.time.now; // grace-period clock for head-hit collider
+    this.lastBouncePlatform = plat; // exempt this platform from head-hit until we clear it
     this.jumpSound?.play();
     audioManager.playBounce();
 

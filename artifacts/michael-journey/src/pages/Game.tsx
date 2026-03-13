@@ -26,25 +26,40 @@ export default function Game() {
 
     gameRef.current = createPhaserGame(containerRef.current);
 
-    // ── iOS Chrome audio unlock ──────────────────────────────────────────────
-    // Fire on every touch so re-suspension (app-switch) is also handled.
+    // ── Audio unlock ─────────────────────────────────────────────────────────
+    // Chrome/iOS block AudioContext until a real user gesture.
+    //
+    // Critical ordering issue:
+    //   For mouse clicks:  pointerdown fires → Phaser processes it (tries to
+    //   start music) → click fires.  If we only listen to "click", the context
+    //   is still suspended when Phaser runs.
+    //
+    // Fix: register on the CAPTURE phase of "pointerdown" and "touchstart".
+    // Capture fires BEFORE any bubble-phase handler (including Phaser's own
+    // input listener), so the context is always running by the time Phaser
+    // tries to play a note.
+    //
+    // We also start the menu theme here — the user hears music the instant
+    // they touch/click anything on the page, not only after pressing START.
     const unlockAudio = () => {
       MusicPlayer.getInstance().unlock();
       audioManager.unlock();
+      // Start menu music on the very first interaction if nothing is playing.
+      if (!MusicPlayer.getInstance().playing) {
+        MusicPlayer.getInstance().start("doctor");
+      }
     };
 
-    // Attach to the container AND document so the first touch anywhere works.
-    const container = containerRef.current;
-    container.addEventListener("touchstart", unlockAudio, { passive: true });
-    container.addEventListener("click",      unlockAudio, { passive: true });
-    document.addEventListener("touchstart",  unlockAudio, { passive: true });
+    // capture:true  → fires before any bubbling listener, including Phaser's
+    // passive:true  → never calls preventDefault, preserves scroll behaviour
+    document.addEventListener("pointerdown", unlockAudio, { capture: true, passive: true });
+    document.addEventListener("touchstart",  unlockAudio, { capture: true, passive: true });
 
     return () => {
       gameRef.current?.destroy(true);
       gameRef.current = null;
-      container.removeEventListener("touchstart", unlockAudio);
-      container.removeEventListener("click",      unlockAudio);
-      document.removeEventListener("touchstart",  unlockAudio);
+      document.removeEventListener("pointerdown", unlockAudio, { capture: true });
+      document.removeEventListener("touchstart",  unlockAudio, { capture: true });
     };
   }, []);
 

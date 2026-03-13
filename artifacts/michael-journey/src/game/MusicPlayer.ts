@@ -269,8 +269,19 @@ export class MusicPlayer {
     this.ensureContext();
     this.isPlaying   = true;
     this.currentStep = 0;
-    this.nextNoteTime = this.ctx!.currentTime + 0.05;
-    this.schedule();
+    if (this.ctx!.state === "running") {
+      this.nextNoteTime = this.ctx!.currentTime + 0.05;
+      this.schedule();
+    } else {
+      // Context is still suspended (resume() is async).
+      // Wait for it to actually start, then begin scheduling.
+      this.ctx!.resume().then(() => {
+        if (this.isPlaying) {
+          this.nextNoteTime = this.ctx!.currentTime + 0.05;
+          this.schedule();
+        }
+      }).catch(() => {});
+    }
   }
 
   private _stop() {
