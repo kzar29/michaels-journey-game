@@ -1,64 +1,58 @@
 /**
- * GameScene
- * ---------
- * Core gameplay: auto-jumping endless vertical platform runner.
+ * GameScene — Michael's Journey core gameplay
+ * Theme: Mexico sunset · Ocean · Gym · Doctor
  *
  * HOW IT WORKS:
- *   - The camera scrolls upward automatically at an increasing speed
+ *   - Camera scrolls upward automatically (speeds up over time)
  *   - Michael auto-jumps every time he lands on a platform
- *   - You only steer left/right
- *   - If Michael falls below the bottom of the screen → Game Over
+ *   - Steer left/right only
+ *   - Fall below the screen → Game Over
  *
- * KEY TUNING VARIABLES (all centralized in config.ts):
- *   - PHYSICS.gravity        → how fast the player falls
- *   - PHYSICS.jumpVelocity   → how high the auto-jump goes
- *   - PHYSICS.moveSpeed      → left/right steering speed
- *   - PLATFORMS.minGapY/maxGapY → vertical spacing between platforms
- *   - SCORE.pointsPerPlatform   → score per platform landed on
+ * KEY TUNING (config.ts):
+ *   PHYSICS.gravity / jumpVelocity / moveSpeed
+ *   PLATFORMS.minGapY / maxGapY
+ *   SCORE.pointsPerPlatform
  */
 
 import Phaser from "phaser";
 import { PHYSICS, PLATFORMS, WORLD, SCORE } from "../config";
 
-// How fast the camera scrolls upward at the start (pixels per second)
 const SCROLL_SPEED_START = 55;
-// How much the scroll speed increases per second of survival
 const SCROLL_SPEED_ACCEL = 3;
-// Maximum scroll speed cap
-const SCROLL_SPEED_MAX = 220;
+const SCROLL_SPEED_MAX   = 220;
+
+// Platform tint cycle (surfboard / beach / gym / doctor colors)
+const PLATFORM_TINTS = [
+  0x00c4aa, // teal (ocean)
+  0xff6b35, // coral (sunset)
+  0xffd166, // gold (sand/beach)
+  0x44cc88, // green (cactus/gym)
+  0x55aaff, // sky blue (kite)
+];
 
 export class GameScene extends Phaser.Scene {
-  // --- Player ---
   private player!: Phaser.Physics.Arcade.Sprite;
-
-  // --- Platforms ---
   private platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   private highestPlatformY: number = 0;
 
-  // --- Camera / scrolling ---
   private cameraY: number = 0;
   private scrollSpeed: number = SCROLL_SPEED_START;
-  private elapsed: number = 0; // seconds since game start
+  private elapsed: number = 0;
 
-  // --- Input ---
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyD!: Phaser.Input.Keyboard.Key;
 
-  // --- Mobile controls ---
-  private touchLeft: boolean = false;
+  private touchLeft: boolean  = false;
   private touchRight: boolean = false;
 
-  // --- Score ---
   private score: number = 0;
   private scoreText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
   private lastLandedPlatform: Phaser.Physics.Arcade.Sprite | null = null;
+  private platTintIndex: number = 0;
 
-  // --- Audio ---
   private jumpSound?: Phaser.Sound.BaseSound;
-
-  // --- State ---
   private isDead: boolean = false;
 
   constructor() {
@@ -68,35 +62,64 @@ export class GameScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // Reset state
+    // Reset
     this.isDead = false;
-    this.score = 0;
+    this.score  = 0;
     this.elapsed = 0;
     this.scrollSpeed = SCROLL_SPEED_START;
     this.cameraY = 0;
     this.lastLandedPlatform = null;
-    this.highestPlatformY = 0;
+    this.highestPlatformY   = 0;
+    this.platTintIndex      = 0;
 
-    // --- Background ---
-    this.add.rectangle(width / 2, 0, width, height * 400, 0x1a1a2e).setScrollFactor(0);
-    for (let i = 0; i < 80; i++) {
-      const sx = Phaser.Math.Between(0, width);
-      const sy = Phaser.Math.Between(-height * 150, height);
-      this.add.circle(sx, sy, Phaser.Math.Between(1, 2), 0xffffff, 0.15);
+    // ── Background: deep ocean sky ──
+    const g = this.add.graphics();
+    g.fillGradientStyle(0x0a1628, 0x0a1628, 0x0d3b5e, 0x0d3b5e, 1);
+    g.fillRect(0, -height * 200, width, height * 202);
+
+    // Warm horizon bands (far below — scroll reveals them)
+    for (let band = 0; band < 6; band++) {
+      const by = height - 80 - band * height;
+      const alpha = 0.07 + band * 0.03;
+      g.fillStyle(0xff8c42, alpha);
+      g.fillRect(0, by, width, 60);
     }
 
-    // --- Physics world (very tall virtual world) ---
+    // Stars (teal + gold + white)
+    for (let i = 0; i < 90; i++) {
+      const sx  = Phaser.Math.Between(0, width);
+      const sy  = Phaser.Math.Between(-height * 150, height);
+      const col = Phaser.Utils.Array.GetRandom([0xffd166, 0x00c4aa, 0xffffff, 0xffe8a1]);
+      this.add.circle(sx, sy, Phaser.Math.Between(1, 2), col, Phaser.Math.FloatBetween(0.15, 0.7));
+    }
+
+    // Floating thematic text icons in world space
+    const worldIcons = [
+      { t: "🩺",  x: 0.1,  y: -0.3  },
+      { t: "🪁",  x: 0.85, y: -0.6  },
+      { t: "🏋️", x: 0.12, y: -1.2  },
+      { t: "🌵",  x: 0.88, y: -1.8  },
+      { t: "🏄",  x: 0.05, y: -2.5  },
+      { t: "🌊",  x: 0.5,  y: -3.0  },
+      { t: "🇲🇽", x: 0.82, y: -3.8  },
+    ];
+    worldIcons.forEach(({ t, x, y }) => {
+      this.add
+        .text(width * x, height * y, t, { fontSize: "28px" })
+        .setOrigin(0.5)
+        .setAlpha(0.22);
+    });
+
+    // ── Physics world ──
     this.physics.world.setBounds(0, -height * 200, width, height * 201);
 
-    // --- Platform group ---
+    // ── Platforms ──
     this.platformGroup = this.physics.add.staticGroup();
 
-    // --- Starting platform (wide, at the bottom) ---
     const startPlatY = height - 60;
     this.spawnPlatform(width / 2, startPlatY, true);
     this.highestPlatformY = startPlatY;
 
-    // --- Pre-generate platforms upward ---
     let nextY = startPlatY;
     for (let i = 0; i < PLATFORMS.poolSize + 4; i++) {
       const gap = Phaser.Math.Between(PLATFORMS.minGapY, PLATFORMS.maxGapY);
@@ -108,45 +131,44 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = Math.min(this.highestPlatformY, nextY);
     }
 
-    // --- Player ---
+    // ── Player ──
     this.player = this.physics.add.sprite(width / 2, startPlatY - 50, "player");
     this.player.setCollideWorldBounds(false);
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
-    const targetH = height * 0.08;
-    this.player.setScale(targetH / this.player.height);
+    this.player.setScale((height * 0.08) / this.player.height);
+    // Warm tint on placeholder sprite
+    this.player.setTint(0xffcc88);
 
-    // --- Camera ---
-    this.cameras.main.setBackgroundColor(0x1a1a2e);
+    this.cameras.main.setBackgroundColor(0x0a1628);
     this.cameras.main.scrollY = 0;
 
-    // --- Platform collision → auto-jump ---
+    // ── Collider → auto-jump ──
     this.physics.add.collider(
       this.player,
       this.platformGroup,
       this.onLandPlatform as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-      // Only collide from above (landing on top) — ignore side collisions
-      (playerObj, _platObj) => {
-        const p = playerObj as Phaser.Physics.Arcade.Sprite;
+      (_p, _plat) => {
+        const p = _p as Phaser.Physics.Arcade.Sprite;
         return p.body!.velocity.y >= 0;
       },
       this
     );
 
-    // --- Keyboard input ---
+    // ── Input ──
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-    this.keyD = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    this.keyA    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.keyD    = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 
-    // --- Mobile touch controls (left / right only — no jump button) ---
+    // ── Mobile controls ──
     this.createMobileControls();
 
-    // --- HUD ---
+    // ── HUD ──
     this.scoreText = this.add
       .text(12, 12, "Score: 0", {
         fontFamily: "monospace",
         fontSize: "20px",
-        color: "#ffffff",
+        color: "#ffd166",
         stroke: "#000000",
         strokeThickness: 3,
       })
@@ -154,10 +176,10 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100);
 
     this.speedText = this.add
-      .text(width - 12, 12, "↑ Speed: 1", {
+      .text(width - 12, 12, "🏄 Lv 1", {
         fontFamily: "monospace",
-        fontSize: "14px",
-        color: "#aaffaa",
+        fontSize: "15px",
+        color: "#00c4aa",
         stroke: "#000000",
         strokeThickness: 2,
       })
@@ -165,16 +187,14 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100)
       .setOrigin(1, 0);
 
-    // --- Jump sound ---
+    // ── Jump sound ──
     if (this.cache.audio.exists("jump")) {
       this.jumpSound = this.sound.add("jump", { volume: 0.4 });
     }
 
-    // Give player a little starting jump so they leave the ground immediately
+    // Initial launch jump
     this.time.delayedCall(100, () => {
-      if (!this.isDead) {
-        this.player.setVelocityY(PHYSICS.jumpVelocity);
-      }
+      if (!this.isDead) this.player.setVelocityY(PHYSICS.jumpVelocity);
     });
   }
 
@@ -182,44 +202,44 @@ export class GameScene extends Phaser.Scene {
     if (this.isDead) return;
 
     const { width, height } = this.scale;
-    const dt = delta / 1000; // delta in seconds
+    const dt = delta / 1000;
 
-    // ---- Increase scroll speed over time ----
+    // Speed ramp
     this.elapsed += dt;
     this.scrollSpeed = Math.min(
       SCROLL_SPEED_START + this.elapsed * SCROLL_SPEED_ACCEL,
       SCROLL_SPEED_MAX
     );
 
-    // ---- Scroll camera upward automatically ----
+    // Auto-scroll up
     this.cameraY -= this.scrollSpeed * dt;
     this.cameras.main.scrollY = this.cameraY;
 
-    // ---- Horizontal movement (left/right only) ----
-    const movingLeft = this.cursors.left.isDown || this.keyA.isDown || this.touchLeft;
-    const movingRight = this.cursors.right.isDown || this.keyD.isDown || this.touchRight;
+    // Horizontal steering
+    const goLeft  = this.cursors.left.isDown  || this.keyA.isDown || this.touchLeft;
+    const goRight = this.cursors.right.isDown || this.keyD.isDown || this.touchRight;
 
-    if (movingLeft) {
+    if (goLeft) {
       this.player.setVelocityX(-PHYSICS.moveSpeed);
       this.player.setFlipX(true);
-    } else if (movingRight) {
+    } else if (goRight) {
       this.player.setVelocityX(PHYSICS.moveSpeed);
       this.player.setFlipX(false);
     } else {
       this.player.setVelocityX(this.player.body!.velocity.x * 0.75);
     }
 
-    // ---- Horizontal wrap (walk off one edge, appear on the other) ----
+    // Horizontal wrap
     if (this.player.x < -this.player.displayWidth / 2) {
       this.player.x = width + this.player.displayWidth / 2;
     } else if (this.player.x > width + this.player.displayWidth / 2) {
       this.player.x = -this.player.displayWidth / 2;
     }
 
-    // ---- Generate new platforms ahead of the camera ----
-    const generateY = this.cameraY - PLATFORMS.generateAheadY;
-    while (this.highestPlatformY > generateY) {
-      const gap = Phaser.Math.Between(PLATFORMS.minGapY, PLATFORMS.maxGapY);
+    // Generate platforms ahead
+    const genY = this.cameraY - PLATFORMS.generateAheadY;
+    while (this.highestPlatformY > genY) {
+      const gap  = Phaser.Math.Between(PLATFORMS.minGapY, PLATFORMS.maxGapY);
       const newY = this.highestPlatformY - gap;
       this.spawnPlatform(
         Phaser.Math.Between(PLATFORMS.width / 2 + 10, width - PLATFORMS.width / 2 - 10),
@@ -228,108 +248,97 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = newY;
     }
 
-    // ---- Recycle platforms scrolled below the screen ----
+    // Recycle old platforms
     this.platformGroup.getChildren().forEach((go) => {
       const plat = go as Phaser.Physics.Arcade.Sprite;
-      if (plat.y > this.cameraY + height + 100) {
-        plat.destroy();
-      }
+      if (plat.y > this.cameraY + height + 100) plat.destroy();
     });
 
-    // ---- Death: player scrolled below the screen bottom ----
+    // Death
     if (this.player.y > this.cameraY + height + WORLD.fallMargin) {
       this.handleDeath();
     }
 
-    // ---- HUD updates ----
-    const speedLevel = Math.floor(this.elapsed / 10) + 1;
-    this.speedText.setText(`↑ Speed: ${speedLevel}`);
+    // HUD speed level
+    const lvl = Math.floor(this.elapsed / 10) + 1;
+    this.speedText.setText(`🏄 Lv ${lvl}`);
   }
 
-  // --- Spawn a platform ---
   private spawnPlatform(x: number, y: number, isStart: boolean = false) {
     const plat = this.platformGroup.create(x, y, "platform") as Phaser.Physics.Arcade.Sprite;
     plat.setScale(PLATFORMS.width / plat.width, PLATFORMS.height / plat.height).refreshBody();
     plat.setDepth(5);
-    if (isStart) plat.setTint(0xffdd88);
+
+    if (isStart) {
+      plat.setTint(0xffd166); // golden start platform
+    } else {
+      // Cycle through themed colors
+      plat.setTint(PLATFORM_TINTS[this.platTintIndex % PLATFORM_TINTS.length]);
+      this.platTintIndex++;
+    }
+
     return plat;
   }
 
-  // --- Auto-jump: fires every time the player lands on a platform ---
   private onLandPlatform(
     _player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     platform: Phaser.Types.Physics.Arcade.GameObjectWithBody
   ) {
     const plat = platform as Phaser.Physics.Arcade.Sprite;
 
-    // Auto-jump immediately
+    // Auto-jump
     this.player.setVelocityY(PHYSICS.jumpVelocity);
     this.jumpSound?.play();
 
-    // Score: only count new platforms
+    // Score
     if (plat !== this.lastLandedPlatform) {
       this.lastLandedPlatform = plat;
       this.score += SCORE.pointsPerPlatform;
       this.scoreText.setText(`Score: ${this.score}`);
 
-      // Visual flash
-      plat.setTint(0xffffaa);
-      this.time.delayedCall(150, () => {
-        if (plat.active) plat.clearTint();
+      // Flash white then restore tint
+      const prevTint = plat.tintTopLeft;
+      plat.setTint(0xffffff);
+      this.time.delayedCall(120, () => {
+        if (plat.active) plat.setTint(prevTint);
       });
     }
   }
 
-  // --- Mobile left/right touch zones (no jump button needed) ---
   private createMobileControls() {
     const { width, height } = this.scale;
 
-    // Left half
+    // Left zone
     const leftZone = this.add
-      .rectangle(width * 0.25, height * 0.75, width * 0.5, height * 0.5, 0xffffff, 0.04)
-      .setScrollFactor(0)
-      .setDepth(200)
-      .setInteractive();
+      .rectangle(width * 0.25, height * 0.75, width * 0.5, height * 0.5, 0xff6b35, 0.04)
+      .setScrollFactor(0).setDepth(200).setInteractive();
 
     this.add
-      .text(width * 0.15, height * 0.88, "◀", {
-        fontFamily: "monospace",
-        fontSize: "36px",
-        color: "#ffffff",
+      .text(width * 0.12, height * 0.88, "◀", {
+        fontFamily: "monospace", fontSize: "36px", color: "#ff6b35",
       })
-      .setScrollFactor(0)
-      .setDepth(201)
-      .setOrigin(0.5)
-      .setAlpha(0.3);
+      .setScrollFactor(0).setDepth(201).setOrigin(0.5).setAlpha(0.35);
 
     leftZone.on("pointerdown", () => { this.touchLeft = true; });
-    leftZone.on("pointerup", () => { this.touchLeft = false; });
-    leftZone.on("pointerout", () => { this.touchLeft = false; });
+    leftZone.on("pointerup",   () => { this.touchLeft = false; });
+    leftZone.on("pointerout",  () => { this.touchLeft = false; });
 
-    // Right half
+    // Right zone
     const rightZone = this.add
-      .rectangle(width * 0.75, height * 0.75, width * 0.5, height * 0.5, 0xffffff, 0.04)
-      .setScrollFactor(0)
-      .setDepth(200)
-      .setInteractive();
+      .rectangle(width * 0.75, height * 0.75, width * 0.5, height * 0.5, 0x00c4aa, 0.04)
+      .setScrollFactor(0).setDepth(200).setInteractive();
 
     this.add
-      .text(width * 0.85, height * 0.88, "▶", {
-        fontFamily: "monospace",
-        fontSize: "36px",
-        color: "#ffffff",
+      .text(width * 0.88, height * 0.88, "▶", {
+        fontFamily: "monospace", fontSize: "36px", color: "#00c4aa",
       })
-      .setScrollFactor(0)
-      .setDepth(201)
-      .setOrigin(0.5)
-      .setAlpha(0.3);
+      .setScrollFactor(0).setDepth(201).setOrigin(0.5).setAlpha(0.35);
 
     rightZone.on("pointerdown", () => { this.touchRight = true; });
-    rightZone.on("pointerup", () => { this.touchRight = false; });
-    rightZone.on("pointerout", () => { this.touchRight = false; });
+    rightZone.on("pointerup",   () => { this.touchRight = false; });
+    rightZone.on("pointerout",  () => { this.touchRight = false; });
   }
 
-  // --- Game over ---
   private handleDeath() {
     if (this.isDead) return;
     this.isDead = true;
