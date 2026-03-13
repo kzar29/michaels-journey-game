@@ -51,7 +51,7 @@ export const PLATFORMS = {
   maxGapY: 140,
 
   /** Width of each platform (pixels). */
-  width: 140,
+  width: 110,
 
   /** Height of each platform (pixels). */
   height: 20,

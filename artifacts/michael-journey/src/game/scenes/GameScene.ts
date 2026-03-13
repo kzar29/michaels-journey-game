@@ -39,6 +39,7 @@ export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   private highestPlatformY: number = 0;
+  private lastPlatformX: number = 0;
 
   private cameraY: number = 0;
   private scrollSpeed: number = LEVEL_SPEEDS[0];
@@ -88,6 +89,7 @@ export class GameScene extends Phaser.Scene {
     this.cameraY       = 0;
     this.lastLandedPlatform = null;
     this.highestPlatformY   = 0;
+    this.lastPlatformX      = 0;
     this.isDoctorAnim       = false;
     this.docAnimState       = "";
     this.currentLevel         = 0;
@@ -357,14 +359,28 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Generate platforms ahead (gaps grow each level)
-    const genY = this.cameraY - PLATFORMS.generateAheadY;
+    const genY  = this.cameraY - PLATFORMS.generateAheadY;
     while (this.highestPlatformY > genY) {
       const gap  = Phaser.Math.Between(this.currentMinGap, this.currentMaxGap);
       const newY = this.highestPlatformY - gap;
-      this.spawnPlatform(
-        Phaser.Math.Between(PLATFORMS.width / 2 + 10, width - PLATFORMS.width / 2 - 10),
-        newY
-      );
+
+      // Enforce a minimum horizontal jump so the player can never camp the centre.
+      // Try up to 20 random positions; keep the best one (furthest from last).
+      const margin     = PLATFORMS.width / 2 + 15;
+      const minHorizDist = Math.floor(width * 0.28); // ~28% of screen width
+      let bestX = Phaser.Math.Between(margin, width - margin);
+      for (let t = 0; t < 20; t++) {
+        const candidate = Phaser.Math.Between(margin, width - margin);
+        if (Math.abs(candidate - this.lastPlatformX) >= minHorizDist) {
+          bestX = candidate;
+          break;
+        }
+        if (Math.abs(candidate - this.lastPlatformX) > Math.abs(bestX - this.lastPlatformX)) {
+          bestX = candidate;
+        }
+      }
+      this.lastPlatformX = bestX;
+      this.spawnPlatform(bestX, newY);
       this.highestPlatformY = newY;
     }
 
