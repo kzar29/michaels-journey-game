@@ -154,8 +154,31 @@ export class MusicPlayer {
   private schedulerTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getInstance(): MusicPlayer {
-    if (!MusicPlayer._instance) MusicPlayer._instance = new MusicPlayer();
+    if (!MusicPlayer._instance) {
+      MusicPlayer._instance = new MusicPlayer();
+      // Re-resume the AudioContext whenever the page becomes visible again
+      // (iOS suspends all AudioContexts when the browser goes to background).
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          MusicPlayer._instance?.resumeIfNeeded();
+        }
+      });
+    }
     return MusicPlayer._instance;
+  }
+
+  /** Resume the context and restart the scheduler if it stalled. */
+  resumeIfNeeded() {
+    if (!this.ctx) return;
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume().then(() => {
+        // If music should be playing but the scheduler died, restart it.
+        if (this.isPlaying && !this.schedulerTimer) {
+          this.nextNoteTime = this.ctx!.currentTime + 0.05;
+          this.schedule();
+        }
+      }).catch(() => {});
+    }
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -195,10 +218,22 @@ export class MusicPlayer {
    */
   unlock() {
     try {
+      const Ctor = window.AudioContext ?? (window as any).webkitAudioContext;
       if (!this.ctx || this.ctx.state === "closed") {
-        this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.ctx = new Ctor() as AudioContext;
+        this.masterGain = null;
       }
-      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      if (this.ctx.state === "suspended") {
+        this.ctx.resume().catch(() => {});
+      }
+      // iOS Chrome requires a real sound node to be started inside the gesture
+      // handler — .resume() alone is not sufficient.
+      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.ctx.destination);
+      src.start(0);
+      src.stop(0.001);
     } catch { /* ignore */ }
   }
 

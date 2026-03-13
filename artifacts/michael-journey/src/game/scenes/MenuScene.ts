@@ -76,9 +76,18 @@ export class MenuScene extends Phaser.Scene {
     btnBg.on("pointerout",   () => btnBg.setFillStyle(0xff6b35));
     btnBg.on("pointerdown",  () => {
       btnBg.setFillStyle(0xdd5520);
-      // Unlock Web Audio on iOS/Chrome — must happen inside a direct gesture handler
+      // Unlock Web Audio on iOS/Chrome — must happen inside a direct gesture handler.
+      // 1) Our synthesiser contexts (MusicPlayer + AudioManager) — silent-buffer trick.
       MusicPlayer.getInstance().unlock();
       audioManager.unlock();
+      // 2) Phaser's own WebAudio context (used for WAV sound effects).
+      //    Phaser exposes .unlock() on its WebAudioSoundManager.
+      try { (this.sound as any).unlock?.(); } catch { /* ignore */ }
+      // 3) Belt-and-suspenders: directly resume Phaser's context if accessible.
+      try {
+        const pCtx: AudioContext | undefined = (this.sound as any).context;
+        if (pCtx && pCtx.state === "suspended") pCtx.resume().catch(() => {});
+      } catch { /* ignore */ }
       this.time.delayedCall(130, () => this.scene.start("AvatarScene"));
     });
 
