@@ -27,9 +27,9 @@ export class MenuScene extends Phaser.Scene {
 
     // Title text
     this.add
-      .text(width / 2, height * 0.28, "MICHAEL", {
+      .text(width / 2, height * 0.28, "MICHAEL'S", {
         fontFamily: "monospace",
-        fontSize: `${Math.round(width * 0.12)}px`,
+        fontSize: `${Math.round(width * 0.10)}px`,
         color: "#ffe84d",
         stroke: "#ff8800",
         strokeThickness: 4,
@@ -48,7 +48,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Subtitle
     this.add
-      .text(width / 2, height * 0.52, "🎮 Jump. Survive. Score!", {
+      .text(width / 2, height * 0.52, "🎮 Steer. Bounce. Survive!", {
         fontFamily: "monospace",
         fontSize: `${Math.round(width * 0.045)}px`,
         color: "#ccccff",
@@ -80,8 +80,9 @@ export class MenuScene extends Phaser.Scene {
 
     // Controls hint
     const controlsText = [
-      "Mobile: hold ◀ ▶ zones, tap JUMP",
-      "Desktop: A/D or ← → to move, Space/↑ to jump",
+      "Michael jumps automatically on every platform!",
+      "Mobile: tap left/right half to steer",
+      "Desktop: A/D or ← → to steer",
     ].join("\n");
 
     this.add

@@ -38,7 +38,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // Game Over title
     this.add
-      .text(width / 2, height * 0.22, "GAME OVER", {
+      .text(width / 2, height * 0.19, "GAME OVER", {
         fontFamily: "monospace",
         fontSize: `${Math.round(width * 0.1)}px`,
         color: "#ff4466",
@@ -47,9 +47,19 @@ export class GameOverScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    this.add
+      .text(width / 2, height * 0.30, "MICHAEL'S JOURNEY", {
+        fontFamily: "monospace",
+        fontSize: `${Math.round(width * 0.055)}px`,
+        color: "#ff6fd8",
+        stroke: "#880066",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+
     // Score display
     this.add
-      .text(width / 2, height * 0.42, `Score: ${this.finalScore}`, {
+      .text(width / 2, height * 0.44, `Score: ${this.finalScore}`, {
         fontFamily: "monospace",
         fontSize: `${Math.round(width * 0.08)}px`,
         color: "#ffe84d",
@@ -61,7 +71,7 @@ export class GameOverScene extends Phaser.Scene {
     // Fun message based on score
     const msg = this.getScoreMessage(this.finalScore);
     this.add
-      .text(width / 2, height * 0.55, msg, {
+      .text(width / 2, height * 0.56, msg, {
         fontFamily: "monospace",
         fontSize: `${Math.round(width * 0.042)}px`,
         color: "#aaccff",
