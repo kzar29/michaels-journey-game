@@ -35,7 +35,7 @@ const AVATARS: AvatarDef[] = [
   },
   {
     key:     "avatar_gym",
-    name:    "NOBULL MICHAEL",
+    name:    "GYM BRO MICHAEL",
     emoji:   "💪",
     tagline: "Never skips leg day (or a platform)",
     color:   0xff6b35,
