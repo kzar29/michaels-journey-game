@@ -70,11 +70,19 @@ export class AvatarScene extends Phaser.Scene {
   private glowRect!: Phaser.GameObjects.Rectangle;
   private floatTween?: Phaser.Tweens.Tween;
   private isTransitioning = false;
+  private spriteBaseY = 0;
 
   constructor() { super({ key: "AvatarScene" }); }
 
   create() {
     const { width: W, height: H } = this.scale;
+
+    // ── Reset per-visit state (scene is reused across visits) ─────────────────
+    this.sprites          = [];
+    this.dots             = [];
+    this.current          = 0;
+    this.isTransitioning  = false;
+    this.floatTween       = undefined;
 
     // ── Background ────────────────────────────────────────────────────────────
     this.add.rectangle(W / 2, H / 2, W, H, BG);
@@ -94,8 +102,9 @@ export class AvatarScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x00c4aa, 0.5);
 
     // ── All sprites (stacked; only active one visible) ────────────────────────
+    this.spriteBaseY = H * 0.41;
     AVATARS.forEach((av, i) => {
-      const img = this.add.image(W / 2, H * 0.41, av.key);
+      const img = this.add.image(W / 2, this.spriteBaseY, av.key);
       const maxH = H * 0.48;
       const maxW = W * 0.55;
       const scale = Math.min(maxW / img.width, maxH / img.height);
@@ -238,11 +247,11 @@ export class AvatarScene extends Phaser.Scene {
       alpha:    0,
       duration: 220,
       ease:     "Cubic.easeIn",
-      onComplete: () => { outSprite.setAlpha(0).setX(W / 2); },
+      onComplete: () => { outSprite.setAlpha(0).setX(W / 2).setY(this.spriteBaseY); },
     });
 
     // Slide in next from the opposite side
-    inSprite.setX(W / 2 - slideOut).setAlpha(0);
+    inSprite.setX(W / 2 - slideOut).setY(this.spriteBaseY).setAlpha(0);
     this.tweens.add({
       targets:  inSprite,
       x:        W / 2,
