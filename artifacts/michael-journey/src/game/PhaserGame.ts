@@ -53,6 +53,11 @@ export function createPhaserGame(parent: HTMLElement): Phaser.Game {
       antialias: false,
     },
 
+    // Allow HTML DOM elements (used for name-input field)
+    dom: {
+      createContainer: true,
+    },
+
     // Enable multi-touch for mobile buttons
     input: {
       activePointers: 3,

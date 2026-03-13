@@ -88,6 +88,20 @@ export class AvatarScene extends Phaser.Scene {
     this.add.rectangle(W / 2, H / 2, W, H, BG);
     this.addStars(W, H);
 
+    // ── Back to Main Menu ─────────────────────────────────────────────────────
+    const backBg = this.add.rectangle(W * 0.14, H * 0.045, 90, 34, 0x000000, 0.4)
+      .setInteractive({ useHandCursor: true }).setDepth(20);
+    this.add.text(W * 0.14, H * 0.045, "← MENU", {
+      fontFamily: "monospace", fontSize: "11px", color: "#00c4aa",
+      stroke: "#000", strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(21);
+    backBg.on("pointerover", () => backBg.setFillStyle(0x003344, 0.7));
+    backBg.on("pointerout",  () => backBg.setFillStyle(0x000000, 0.4));
+    backBg.on("pointerdown", () => {
+      MusicPlayer.getInstance().stop();
+      this.scene.start("MenuScene");
+    });
+
     // ── Title ─────────────────────────────────────────────────────────────────
     this.add.text(W / 2, H * 0.07, "WHO IS MICHAEL TODAY?", {
       fontFamily: "'Press Start 2P', monospace",

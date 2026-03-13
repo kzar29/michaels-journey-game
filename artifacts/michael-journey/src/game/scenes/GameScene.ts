@@ -16,6 +16,7 @@
 
 import Phaser from "phaser";
 import { PHYSICS, PLATFORMS, WORLD, SCORE } from "../config";
+import { audioManager } from "../AudioManager";
 
 // Speed and gap values per level (level 0 = easiest, capped at last entry)
 const LEVEL_DURATION  = 10; // seconds per level step
@@ -370,6 +371,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showLevelUp(level: number) {
+    audioManager.playLevelUp();
     const { width, height } = this.scale;
     const txt = this.add
       .text(width / 2, height * 0.42, `LEVEL ${level}! ⚡`, {
@@ -412,6 +414,7 @@ export class GameScene extends Phaser.Scene {
     // Auto-jump
     this.player.setVelocityY(PHYSICS.jumpVelocity);
     this.jumpSound?.play();
+    audioManager.playBounce();
 
     // Doctor land animation — brief crouch flash before jump anim takes over
     if (this.isDoctorAnim) {
@@ -474,6 +477,7 @@ export class GameScene extends Phaser.Scene {
     this.rightPointers.clear();
     this.player.setVelocity(0, 0);
     this.player.setGravityY(0);
+    audioManager.playGameOver();
     this.time.delayedCall(400, () => {
       this.scene.start("GameOverScene", { score: this.score });
     });
