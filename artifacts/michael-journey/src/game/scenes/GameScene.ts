@@ -147,7 +147,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
     // Doctor frames are 308×1024 with transparent headroom — boost scale slightly
-    const scaleH = this.isDoctorAnim ? height * 0.13 : height * 0.11;
+    const scaleH = this.isDoctorAnim ? height * 0.17 : height * 0.15;
     this.player.setScale(scaleH / this.player.height);
 
     // ── Doctor animations (recreate each scene start so frame changes take effect) ──
@@ -412,7 +412,7 @@ export class GameScene extends Phaser.Scene {
     const plat = this.platformGroup.create(x, y, this.platKey) as Phaser.Physics.Arcade.Sprite;
     // Scale to PLATFORMS.width; cap display height so platforms stay flat-ish
     const naturalH = (plat.height / plat.width) * PLATFORMS.width;
-    const displayH = Math.min(naturalH, 52);
+    const displayH = Math.min(naturalH, 68);
     plat.setScale(PLATFORMS.width / plat.width, displayH / plat.height).refreshBody();
     plat.setDepth(5);
     return plat;
