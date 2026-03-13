@@ -80,6 +80,10 @@ export class GameScene extends Phaser.Scene {
     { vx: number; vanishes: boolean }
   > = new Map();
 
+  // Tracks when the player last bounced — prevents head-hit collider from
+  // firing on the same platform the player just jumped off.
+  private lastBounceTime: number = 0;
+
   // Character size selection (persisted across games)
   private charSizeKey: "S" | "M" | "L" = "M";
   // Fraction of screen height the character sprite should fill
@@ -116,6 +120,7 @@ export class GameScene extends Phaser.Scene {
     this.leftPointers.clear();
     this.rightPointers.clear();
     this.sizeButtons          = [];
+    this.lastBounceTime       = 0;
 
     // Load persisted size preference (default M)
     const saved = localStorage.getItem("michael_char_size");
@@ -216,14 +221,35 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x0a1628);
     this.cameras.main.scrollY = 0;
 
-    // ── Platform collision → auto-jump ──
+    // ── Platform collision ────────────────────────────────────────────────────
+    // Two distinct cases handled by a single collider:
+    //   • Falling (vy ≥ 0)  → land on platform top and auto-jump
+    //   • Rising  (vy < 0)  → head hits platform bottom; bounce back down
+    //
+    // A 180 ms grace period after each bounce prevents the collider from
+    // immediately firing on the platform that was just left.
     this.physics.add.collider(
       this.player,
       this.platformGroup,
-      this.onLandPlatform as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-      (_p) => {
-        const p = _p as Phaser.Physics.Arcade.Sprite;
-        return p.body!.velocity.y >= 0;
+      (playerGO, platformGO) => {
+        const body = this.player.body as Phaser.Physics.Arcade.Body;
+        if (body.velocity.y >= 0) {
+          this.onLandPlatform(
+            playerGO  as Phaser.Types.Physics.Arcade.GameObjectWithBody,
+            platformGO as Phaser.Types.Physics.Arcade.GameObjectWithBody
+          );
+        } else {
+          // Head hit — redirect player downward at ~35 % of upward speed
+          body.setVelocityY(Math.abs(body.velocity.y) * 0.35 + 40);
+        }
+      },
+      (playerGO) => {
+        const body = (playerGO as Phaser.Physics.Arcade.Sprite)
+          .body as Phaser.Physics.Arcade.Body;
+        const vy = body.velocity.y;
+        if (vy >= 0) return true; // always allow landing
+        // Rising: allow head-hit only after the grace period
+        return (this.time.now - this.lastBounceTime) > 180;
       },
       this
     );
@@ -469,7 +495,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawnPlatform(x: number, y: number, isStart: boolean = false) {
     // Decide platform variant based on current level (not applied to the starting platform)
-    let platW    = PLATFORMS.width; // 110 px default
+    let platW: number = PLATFORMS.width; // 110 px default
     let vx       = 0;
     let vanishes = false;
     let tint: number | null = null;
@@ -513,6 +539,7 @@ export class GameScene extends Phaser.Scene {
 
     // Auto-jump (velocity scales with level to stay playable at high speeds)
     this.player.setVelocityY(this.currentJumpVelocity);
+    this.lastBounceTime = this.time.now; // grace-period clock for head-hit collider
     this.jumpSound?.play();
     audioManager.playBounce();
 
@@ -634,6 +661,49 @@ export class GameScene extends Phaser.Scene {
     const fraction = GameScene.SIZE_FRACTIONS[this.charSizeKey] ?? 0.20;
     const targetH  = height * fraction;
     this.player.setScale(targetH / this.player.height);
+    // Body must be recalculated after every scale change (setSize uses frame coords
+    // multiplied by current scale, so calling after setScale gives correct world size).
+    this.applyPlayerBody();
+  }
+
+  /**
+   * Tighten the physics body so it matches the actual visible character rather
+   * than the full (transparent-padded) sprite frame.
+   *
+   * Animated spritesheets (308 × 1024 per frame):
+   *   The green-screened character fills roughly the centre 36 % of the width
+   *   and rows 22 %–90 % of the height.
+   *
+   * Static avatar images:
+   *   Characters are closer to full-frame, so slightly looser bounds.
+   *
+   * setSize / setOffset take UN-SCALED frame-pixel values; Phaser multiplies them
+   * by the current scaleX/Y internally, so world body size = frame value × scale.
+   */
+  private applyPlayerBody() {
+    const body   = this.player.body as Phaser.Physics.Arcade.Body;
+    const frameW = this.player.width;   // un-scaled texture width
+    const frameH = this.player.height;  // un-scaled texture height
+
+    if (this.animPrefix) {
+      // Animated spritesheet: 308 × 1024 frame
+      // Character body (not wings/arms) ≈ 36 % wide, 68 % tall
+      // starting at ~22 % from top (head) down to ~90 % (feet)
+      const bW  = frameW * 0.36;
+      const bH  = frameH * 0.68;
+      const oX  = (frameW - bW) / 2;   // centre horizontally
+      const oY  = frameH * 0.22;        // head starts here
+      body.setSize(bW, bH);
+      body.setOffset(oX, oY);
+    } else {
+      // Static avatar image: character fills most of the frame
+      const bW  = frameW * 0.55;
+      const bH  = frameH * 0.78;
+      const oX  = (frameW - bW) / 2;
+      const oY  = frameH * 0.08;
+      body.setSize(bW, bH);
+      body.setOffset(oX, oY);
+    }
   }
 
   /** Switch to a new size, update the sprite and the button highlights. */
