@@ -22,6 +22,7 @@ import Phaser from "phaser";
 
 // ── Asset paths (change here to swap assets globally) ──────────────────────
 const ASSETS = {
+  menuBg:   "assets/menu_bg.png",
   doctor:   "assets/player/michael_doctor.png",
   gym:      "assets/player/michael_gym.png",
   vacation: "assets/player/michael_vacation.png",
@@ -71,6 +72,9 @@ export class BootScene extends Phaser.Scene {
         .fillStyle(0xff6b35, 1)
         .fillRect(width / 2 - barW / 2 + 2, height / 2 - 8, (barW - 4) * v, 16);
     });
+
+    // --- Menu background ---
+    this.load.image("menu_bg", ASSETS.menuBg);
 
     // --- All four avatar sprites ---
     this.load.image("avatar_doctor",   ASSETS.doctor);
