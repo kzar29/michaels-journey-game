@@ -95,23 +95,23 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5).setDepth(3);
 
-    const scores = getTopScores(5);
+    const scores = getTopScores(3);
     if (scores.length === 0) {
       this.add.text(width / 2, height * 0.725, "No scores yet — be first!", {
         fontFamily: "monospace", fontSize: "11px",
         color: "#88aabb", stroke: "#000", strokeThickness: 2,
       }).setOrigin(0.5).setDepth(3);
     } else {
-      const rowH  = height * 0.038;
-      const startY = height * 0.665;
+      const rowH   = height * 0.044;
+      const startY = height * 0.670;
       scores.forEach((entry, i) => {
         const y    = startY + i * rowH;
-        const rank = ["🥇", "🥈", "🥉", "4.", "5."][i];
+        const rank = ["🥇", "🥈", "🥉"][i];
         const line = `${rank}  ${entry.name.padEnd(10)}  ${entry.score}`;
-        const col  = i === 0 ? "#ffd166" : i === 1 ? "#e0e0e0" : i === 2 ? "#ffaa66" : "#99bbcc";
+        const col  = i === 0 ? "#ffd166" : i === 1 ? "#e0e0e0" : "#ffaa66";
         this.add.text(width / 2, y, line, {
           fontFamily: "monospace",
-          fontSize: `${Math.round(width * 0.031)}px`,
+          fontSize: `${Math.round(width * 0.034)}px`,
           color: col, stroke: "#000", strokeThickness: 2,
         }).setOrigin(0.5).setDepth(3);
       });

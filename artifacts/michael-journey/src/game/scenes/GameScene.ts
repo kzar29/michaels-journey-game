@@ -70,9 +70,15 @@ export class GameScene extends Phaser.Scene {
   private currentMaxGap: number = LEVEL_MAX_GAPS[0];
   private currentJumpVelocity: number = -LEVEL_JUMPS[0];
 
-  // Animated character state ("doc" | "gym" | "" for static sprites)
-  private animPrefix   = "";
+  // Animated character state ("doc" | "gym" | "vacation" | "" for static sprites)
+  private animPrefix    = "";
   private charAnimState = "";
+
+  // Per-platform behaviour data (only entries for special platforms)
+  private platformData: Map<
+    Phaser.Physics.Arcade.Sprite,
+    { vx: number; vanishes: boolean }
+  > = new Map();
 
   constructor() {
     super({ key: "GameScene" });
@@ -92,6 +98,7 @@ export class GameScene extends Phaser.Scene {
     this.lastPlatformX      = 0;
     this.animPrefix         = "";
     this.charAnimState      = "";
+    this.platformData.clear();
     this.currentLevel         = 0;
     this.currentMinGap        = LEVEL_MIN_GAPS[0];
     this.currentMaxGap        = LEVEL_MAX_GAPS[0];
@@ -384,10 +391,23 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = newY;
     }
 
+    // Move sliding platforms
+    const slideMargin = 70;
+    this.platformData.forEach((data, plat) => {
+      if (!plat.active || data.vx === 0) return;
+      plat.x += data.vx * dt;
+      if (plat.x < slideMargin) { plat.x = slideMargin; data.vx = Math.abs(data.vx); }
+      if (plat.x > width - slideMargin) { plat.x = width - slideMargin; data.vx = -Math.abs(data.vx); }
+      (plat.body as Phaser.Physics.Arcade.StaticBody).reset(plat.x, plat.y);
+    });
+
     // Recycle old platforms
     this.platformGroup.getChildren().forEach((go) => {
       const plat = go as Phaser.Physics.Arcade.Sprite;
-      if (plat.y > this.cameraY + height + 100) plat.destroy();
+      if (plat.y > this.cameraY + height + 100) {
+        this.platformData.delete(plat);
+        plat.destroy();
+      }
     });
 
     // Death check
@@ -424,13 +444,41 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private spawnPlatform(x: number, y: number, _isStart: boolean = false) {
+  private spawnPlatform(x: number, y: number, isStart: boolean = false) {
+    // Decide platform variant based on current level (not applied to the starting platform)
+    let platW    = PLATFORMS.width; // 110 px default
+    let vx       = 0;
+    let vanishes = false;
+    let tint: number | null = null;
+
+    if (!isStart) {
+      // Level 3+ : 35 % chance of a narrower platform (80 px)
+      if (this.currentLevel >= 3 && Math.random() < 0.35) platW = 80;
+
+      // Level 4+ : 40 % chance of a left-right sliding platform
+      if (this.currentLevel >= 4 && Math.random() < 0.40) {
+        const spd = 50 + this.currentLevel * 10;
+        vx   = Math.random() < 0.5 ? spd : -spd;
+        tint = 0xffdd44; // golden yellow — "this thing moves"
+      }
+
+      // Level 5+ : 25 % chance of a vanishing platform (disappears after landing)
+      if (this.currentLevel >= 5 && Math.random() < 0.25) {
+        vanishes = true;
+        tint     = tint ?? 0xff7733; // orange if not already coloured
+      }
+    }
+
     const plat = this.platformGroup.create(x, y, this.platKey) as Phaser.Physics.Arcade.Sprite;
-    // Scale to PLATFORMS.width; cap display height so platforms stay flat-ish
-    const naturalH = (plat.height / plat.width) * PLATFORMS.width;
+    const naturalH = (plat.height / plat.width) * platW;
     const displayH = Math.min(naturalH, 56);
-    plat.setScale(PLATFORMS.width / plat.width, displayH / plat.height).refreshBody();
+    plat.setScale(platW / plat.width, displayH / plat.height).refreshBody();
     plat.setDepth(5);
+    if (tint !== null) plat.setTint(tint);
+
+    if (vx !== 0 || vanishes) {
+      this.platformData.set(plat, { vx, vanishes });
+    }
     return plat;
   }
 
@@ -451,16 +499,30 @@ export class GameScene extends Phaser.Scene {
       this.player.play(this.animPrefix + "_land", true);
     }
 
+    // Vanishing platform — flash red then destroy
+    const pd = this.platformData.get(plat);
+    if (pd?.vanishes) {
+      plat.setTint(0xff2222);
+      this.time.delayedCall(260, () => {
+        if (plat.active) {
+          this.platformData.delete(plat);
+          plat.destroy();
+        }
+      });
+    }
+
     // Score
     if (plat !== this.lastLandedPlatform) {
       this.lastLandedPlatform = plat;
       this.score += SCORE.pointsPerPlatform;
       this.scoreText.setText(`Score: ${this.score}`);
 
-      plat.setAlpha(0.45);
-      this.time.delayedCall(110, () => {
-        if (plat.active) plat.setAlpha(1);
-      });
+      if (!pd?.vanishes) {
+        plat.setAlpha(0.45);
+        this.time.delayedCall(110, () => {
+          if (plat.active) plat.setAlpha(1);
+        });
+      }
     }
   }
 

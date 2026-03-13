@@ -1,9 +1,9 @@
 /**
- * GameOverScene — shows final score, prompts for name, saves to leaderboard.
+ * GameOverScene — shows final score, prompts for name only if top-3 qualifying, saves to leaderboard.
  */
 
 import Phaser from "phaser";
-import { saveScore, isNewHighScore } from "../ScoreStore";
+import { saveScore, isQualifyingForLeaderboard } from "../ScoreStore";
 
 export class GameOverScene extends Phaser.Scene {
   private finalScore: number = 0;
@@ -75,10 +75,20 @@ export class GameOverScene extends Phaser.Scene {
       })
       .setOrigin(0.5).setDepth(2);
 
-    // ── Name input or buttons ──
-    if (this.finalScore > 0) {
+    // ── Name input only if score qualifies for top 3 ──
+    if (isQualifyingForLeaderboard(this.finalScore)) {
       this.showNameInput();
     } else {
+      // Show a "didn't make top 3" note when the board is already full
+      if (this.finalScore > 0) {
+        this.add.text(width / 2, height * 0.565, "Not top 3 yet — keep going! 💪", {
+          fontFamily: "monospace",
+          fontSize: `${Math.round(width * 0.032)}px`,
+          color: "#88aabb",
+          stroke: "#000", strokeThickness: 2,
+          align: "center",
+        }).setOrigin(0.5).setDepth(3);
+      }
       this.showButtons();
     }
   }
@@ -86,15 +96,11 @@ export class GameOverScene extends Phaser.Scene {
   // ── Name input via HTML DOM element ───────────────────────────────────────
   private showNameInput() {
     const { width, height } = this.scale;
-    const isHigh = isNewHighScore(this.finalScore);
 
-    const headerText = isHigh ? "🏆 NEW HIGH SCORE!" : "NICE RUN!";
-    const headerColor = isHigh ? "#ffd166" : "#00c4aa";
-
-    this.add.text(width / 2, height * 0.555, headerText, {
+    this.add.text(width / 2, height * 0.555, "🏆 TOP 3 — ENTER YOUR NAME!", {
       fontFamily: "monospace",
       fontSize: "18px",
-      color: headerColor,
+      color: "#ffd166",
       stroke: "#000", strokeThickness: 3,
     }).setOrigin(0.5).setDepth(3);
 
@@ -108,7 +114,6 @@ export class GameOverScene extends Phaser.Scene {
       stroke: "#000", strokeThickness: 2,
     }).setOrigin(0.5).setDepth(4);
 
-    // HTML input element for cross-platform text entry (including mobile)
     const html = `
       <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
         <input id="mj-inp"
@@ -133,10 +138,8 @@ export class GameOverScene extends Phaser.Scene {
     const inp = dom.node.querySelector("#mj-inp") as HTMLInputElement;
     const btn = dom.node.querySelector("#mj-btn") as HTMLButtonElement;
 
-    // Focus after a short delay (needed inside iframe)
     this.time.delayedCall(200, () => inp?.focus());
 
-    // Force uppercase while typing
     inp.addEventListener("input", () => {
       const pos = inp.selectionStart ?? inp.value.length;
       inp.value = inp.value.toUpperCase();
