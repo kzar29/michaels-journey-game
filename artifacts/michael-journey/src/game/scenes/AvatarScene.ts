@@ -7,7 +7,15 @@
  */
 
 import Phaser from "phaser";
-import { MusicPlayer } from "../MusicPlayer";
+import { MusicPlayer, MusicTheme } from "../MusicPlayer";
+
+// Maps each avatar to its musical theme
+const AVATAR_THEME: Record<string, MusicTheme> = {
+  avatar_doctor:   "doctor",
+  avatar_gym:      "gym",
+  avatar_vacation: "mexican",
+  avatar_wingfoil: "beach",
+};
 
 interface AvatarDef {
   key:     string;
@@ -141,8 +149,9 @@ export class AvatarScene extends Phaser.Scene {
     // ── LET'S GO button ───────────────────────────────────────────────────────
     this.makeLetsGoButton(W, H);
 
-    // ── Start music (user has already interacted to get here) ─────────────────
-    MusicPlayer.getInstance().start();
+    // ── Start music with theme matching the first avatar ─────────────────────
+    const initialTheme = AVATAR_THEME[AVATARS[0].key] ?? "doctor";
+    MusicPlayer.getInstance().start(initialTheme);
 
     // Initialise display for index 0
     this.updateDisplay(0, false);
@@ -282,6 +291,10 @@ export class AvatarScene extends Phaser.Scene {
 
     // Save selection to Phaser registry for GameScene to read
     this.registry.set("selectedAvatar", av.key);
+
+    // Switch background music to match this avatar's theme
+    const theme = AVATAR_THEME[av.key] ?? "doctor";
+    MusicPlayer.getInstance().switchTheme(theme);
 
     // Floating animation on the active sprite
     this.floatTween = this.tweens.add({
