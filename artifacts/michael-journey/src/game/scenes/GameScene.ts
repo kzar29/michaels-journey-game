@@ -80,6 +80,16 @@ export class GameScene extends Phaser.Scene {
     { vx: number; vanishes: boolean }
   > = new Map();
 
+  // Character size selection (persisted across games)
+  private charSizeKey: "S" | "M" | "L" = "M";
+  // Fraction of screen height the character sprite should fill
+  private static readonly SIZE_FRACTIONS: Record<string, number> = {
+    S: 0.13,
+    M: 0.20,
+    L: 0.28,
+  };
+  private sizeButtons: Phaser.GameObjects.Text[] = [];
+
   constructor() {
     super({ key: "GameScene" });
   }
@@ -105,6 +115,15 @@ export class GameScene extends Phaser.Scene {
     this.currentJumpVelocity  = -LEVEL_JUMPS[0];
     this.leftPointers.clear();
     this.rightPointers.clear();
+    this.sizeButtons          = [];
+
+    // Load persisted size preference (default M)
+    const saved = localStorage.getItem("michael_char_size");
+    if (saved === "S" || saved === "M" || saved === "L") {
+      this.charSizeKey = saved;
+    } else {
+      this.charSizeKey = "M";
+    }
 
     // ── Resolve avatar & matching background ──
     const avatarKey = this.registry.get("selectedAvatar") ?? "avatar_doctor";
@@ -160,9 +179,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(false);
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
-    // Animated frames have tall transparent headroom — scale slightly larger
-    const scaleH = this.animPrefix ? height * 0.14 : height * 0.12;
-    this.player.setScale(scaleH / this.player.height);
+    this.applyCharSize();
 
     // ── Animated character setup (doc / gym share identical 5-frame layout) ──
     // Frame guide:  0=idle  1=crouch  2=jump-up  3=falling  4=thumbs-up
@@ -262,6 +279,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100)
       .setOrigin(1, 0);
 
+    // ── Size picker (S / M / L) ──
+    this.createSizePicker(width);
+
     // ── Jump sound ──
     if (this.cache.audio.exists("jump")) {
       this.jumpSound = this.sound.add("jump", { volume: 0.4 });
@@ -284,6 +304,8 @@ export class GameScene extends Phaser.Scene {
   // --- Register a pointer in the left or right set based on x position ---
   private registerPointer(ptr: Phaser.Input.Pointer) {
     const { width } = this.scale;
+    // Ignore taps in the top HUD strip (SIZE buttons and score live there)
+    if (ptr.y < 40) return;
     if (ptr.x < width / 2) {
       this.leftPointers.add(ptr.id);
     } else {
@@ -559,6 +581,73 @@ export class GameScene extends Phaser.Scene {
       .graphics()
       .lineStyle(1, 0xffffff, 0.06)
       .lineBetween(width / 2, height * 0.70, width / 2, height);
+  }
+
+  // ── Size picker UI ──────────────────────────────────────────────────────────
+  private createSizePicker(width: number) {
+    const labels: Array<"S" | "M" | "L"> = ["S", "M", "L"];
+    const btnW  = 30;
+    const gap   = 6;
+    const totalW = labels.length * btnW + (labels.length - 1) * gap;
+    const startX = width / 2 - totalW / 2 + btnW / 2;
+    const y      = 16;
+
+    // Label on the left
+    this.add.text(startX - btnW - 6, y + 1, "SIZE", {
+      fontFamily: "monospace",
+      fontSize:   "10px",
+      color:      "#aaaaaa",
+      stroke:     "#000000",
+      strokeThickness: 2,
+    }).setScrollFactor(0).setDepth(100).setOrigin(1, 0);
+
+    labels.forEach((label, i) => {
+      const x = startX + i * (btnW + gap);
+
+      // Button background
+      const bg = this.add.rectangle(x, y + 9, btnW, 20, 0x000000, 0.55)
+        .setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+
+      const isActive = label === this.charSizeKey;
+      const txt = this.add.text(x, y + 9, label, {
+        fontFamily: "monospace",
+        fontSize:   "12px",
+        color:      isActive ? "#ffd166" : "#888888",
+        stroke:     "#000000",
+        strokeThickness: 2,
+      }).setScrollFactor(0).setDepth(101).setOrigin(0.5);
+
+      if (isActive) bg.setStrokeStyle(1, 0xffd166, 0.8);
+
+      this.sizeButtons.push(txt);
+
+      bg.on("pointerdown", () => {
+        if (this.isDead) return;
+        this.setCharSize(label);
+      });
+    });
+  }
+
+  /** Resize the player sprite to match the current charSizeKey. */
+  private applyCharSize() {
+    const { height } = this.scale;
+    const fraction = GameScene.SIZE_FRACTIONS[this.charSizeKey] ?? 0.20;
+    const targetH  = height * fraction;
+    this.player.setScale(targetH / this.player.height);
+  }
+
+  /** Switch to a new size, update the sprite and the button highlights. */
+  private setCharSize(key: "S" | "M" | "L") {
+    this.charSizeKey = key;
+    localStorage.setItem("michael_char_size", key);
+    this.applyCharSize();
+
+    // Refresh button highlight colours
+    const labels: Array<"S" | "M" | "L"> = ["S", "M", "L"];
+    this.sizeButtons.forEach((txt, i) => {
+      const active = labels[i] === key;
+      txt.setColor(active ? "#ffd166" : "#888888");
+    });
   }
 
   private handleDeath() {
