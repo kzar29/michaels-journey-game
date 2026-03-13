@@ -276,7 +276,7 @@ export class AvatarScene extends Phaser.Scene {
     // Dots
     this.dots.forEach((d, i) => {
       d.setFillStyle(i === index ? av.color : 0x444466);
-      d.setRadius(i === index ? 7 : 5);
+      d.setScale(i === index ? 1.4 : 1);
     });
 
     // Save selection to Phaser registry for GameScene to read
