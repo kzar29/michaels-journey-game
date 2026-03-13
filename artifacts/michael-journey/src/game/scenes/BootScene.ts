@@ -26,6 +26,10 @@ const ASSETS = {
   gym:      "assets/player/michael_gym.png",
   vacation: "assets/player/michael_vacation.png",
   wingfoil: "assets/player/michael_wingfoil.png",
+  bgDoctor:   "assets/bg/bg_doctor.png",
+  bgGym:      "assets/bg/bg_gym.png",
+  bgVacation: "assets/bg/bg_vacation.png",
+  bgWingfoil: "assets/bg/bg_wingfoil.png",
   platform: "assets/platform/platform.png",
   jump:     "assets/audio/jump.wav",
 } as const;
@@ -69,6 +73,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image("avatar_gym",      ASSETS.gym);
     this.load.image("avatar_vacation", ASSETS.vacation);
     this.load.image("avatar_wingfoil", ASSETS.wingfoil);
+
+    // --- Avatar-themed game backgrounds ---
+    this.load.image("bg_doctor",   ASSETS.bgDoctor);
+    this.load.image("bg_gym",      ASSETS.bgGym);
+    this.load.image("bg_vacation", ASSETS.bgVacation);
+    this.load.image("bg_wingfoil", ASSETS.bgWingfoil);
 
     // --- Platform ---
     this.load.image("platform", ASSETS.platform);

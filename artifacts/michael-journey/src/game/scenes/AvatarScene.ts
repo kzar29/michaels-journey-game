@@ -34,8 +34,8 @@ const AVATARS: AvatarDef[] = [
   },
   {
     key:     "avatar_vacation",
-    name:    "ISLAND MICHAEL",
-    emoji:   "🌺",
+    name:    "VACATIONER MICHAEL",
+    emoji:   "🌴",
     tagline: "Good vibes only, bro",
     color:   0xffd166,
   },
@@ -268,8 +268,9 @@ export class AvatarScene extends Phaser.Scene {
       to:       1,
       duration: 300,
       onUpdate: (t) => {
-        this.glowRect.setStrokeStyle(2, av.color, 0.5 + t.getValue() * 0.3);
-        this.glowRect.setFillStyle(av.color, 0.05 + t.getValue() * 0.06);
+        const v = t?.getValue() ?? 0;
+        this.glowRect.setStrokeStyle(2, av.color, 0.5 + v * 0.3);
+        this.glowRect.setFillStyle(av.color, 0.05 + v * 0.06);
       },
     });
 

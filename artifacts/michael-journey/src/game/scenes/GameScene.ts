@@ -53,6 +53,7 @@ export class GameScene extends Phaser.Scene {
   private lastLandedPlatform: Phaser.Physics.Arcade.Sprite | null = null;
   private platTintIndex: number = 0;
 
+  private bgTile!: Phaser.GameObjects.TileSprite;
   private jumpSound?: Phaser.Sound.BaseSound;
   private isDead: boolean = false;
 
@@ -75,36 +76,24 @@ export class GameScene extends Phaser.Scene {
     this.leftPointers.clear();
     this.rightPointers.clear();
 
-    // ── Background ──
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0a1628, 0x0a1628, 0x0d3b5e, 0x0d3b5e, 1);
-    g.fillRect(0, -height * 200, width, height * 202);
+    // ── Resolve avatar & matching background ──
+    const avatarKey = this.registry.get("selectedAvatar") ?? "avatar_doctor";
+    const BG_MAP: Record<string, string> = {
+      avatar_doctor:   "bg_doctor",
+      avatar_gym:      "bg_gym",
+      avatar_vacation: "bg_vacation",
+      avatar_wingfoil: "bg_wingfoil",
+    };
+    const bgKey = BG_MAP[avatarKey] ?? "bg_doctor";
 
-    for (let band = 0; band < 6; band++) {
-      const by = height - 80 - band * height;
-      g.fillStyle(0xff8c42, 0.07 + band * 0.03);
-      g.fillRect(0, by, width, 60);
-    }
-
-    for (let i = 0; i < 90; i++) {
-      const sx  = Phaser.Math.Between(0, width);
-      const sy  = Phaser.Math.Between(-height * 150, height);
-      const col = Phaser.Utils.Array.GetRandom([0xffd166, 0x00c4aa, 0xffffff, 0xffe8a1]);
-      this.add.circle(sx, sy, Phaser.Math.Between(1, 2), col, Phaser.Math.FloatBetween(0.15, 0.7));
-    }
-
-    const worldIcons = [
-      { t: "🩺",  x: 0.1,  y: -0.3  },
-      { t: "🪁",  x: 0.85, y: -0.6  },
-      { t: "🏋️", x: 0.12, y: -1.2  },
-      { t: "🌵",  x: 0.88, y: -1.8  },
-      { t: "🏄",  x: 0.05, y: -2.5  },
-      { t: "🌊",  x: 0.5,  y: -3.0  },
-      { t: "🇲🇽", x: 0.82, y: -3.8  },
-    ];
-    worldIcons.forEach(({ t, x, y }) => {
-      this.add.text(width * x, height * y, t, { fontSize: "28px" }).setOrigin(0.5).setAlpha(0.22);
-    });
+    // ── Themed tile background (parallax-scrolled in update()) ──
+    // The source images are 256 px wide; tileScaleX stretches them to fill the canvas.
+    this.bgTile = this.add
+      .tileSprite(0, 0, width, height, bgKey)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(-1);
+    this.bgTile.tileScaleX = width / 256;
 
     // ── Physics world ──
     this.physics.world.setBounds(0, -height * 200, width, height * 201);
@@ -127,8 +116,7 @@ export class GameScene extends Phaser.Scene {
       this.highestPlatformY = Math.min(this.highestPlatformY, nextY);
     }
 
-    // ── Player — use whichever avatar is selected ──
-    const avatarKey = this.registry.get("selectedAvatar") ?? "avatar_doctor";
+    // ── Player — use the avatarKey already resolved above ──
     this.player = this.physics.add.sprite(width / 2, startPlatY - 50, avatarKey);
     this.player.setCollideWorldBounds(false);
     this.player.setGravityY(PHYSICS.gravity);
@@ -251,6 +239,9 @@ export class GameScene extends Phaser.Scene {
     // Auto-scroll
     this.cameraY -= this.scrollSpeed * dt;
     this.cameras.main.scrollY = this.cameraY;
+
+    // Parallax-scroll the background at 60% of camera speed
+    this.bgTile.tilePositionY = -this.cameraY * 0.6;
 
     // --- Steering ---
     const goLeft  = this.cursors.left.isDown  || this.keyA.isDown || this.leftPointers.size > 0;
