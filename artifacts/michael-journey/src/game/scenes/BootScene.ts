@@ -2,11 +2,35 @@
  * BootScene
  * ---------
  * Loads all assets before any gameplay begins.
- * Add new assets to ASSET_PATHS in config.ts, then load them here.
+ *
+ * PLAYER SPRITES:
+ *   Key "player"         → currently active avatar (doctor by default)
+ *   Key "avatar_doctor"  → public/assets/player/michael_doctor.png
+ *   Key "avatar_kite"    → public/assets/player/michael_kitesurf.png
+ *   Key "avatar_gym"     → public/assets/player/michael_gym.png
+ *
+ * To add a new avatar later:
+ *   1. Drop your PNG into public/assets/player/
+ *   2. Add a load.image() call below with a new key
+ *   3. Add it to the avatar selection screen
+ *
+ * AUDIO:
+ *   Drop jump.wav into public/assets/audio/ and uncomment the load.audio line.
  */
 
 import Phaser from "phaser";
-import { ASSET_PATHS } from "../config";
+
+// ── Asset paths (change here to swap assets globally) ──────────────────────
+const ASSETS = {
+  doctor:   "assets/player/michael_doctor.png",
+  kitesurf: "assets/player/michael_kitesurf.png",
+  gym:      "assets/player/michael_gym.png",
+  platform: "assets/platform/platform.png",
+  jump:     "assets/audio/jump.wav",
+} as const;
+
+// ── Which avatar is active by default ──────────────────────────────────────
+export const DEFAULT_AVATAR: "doctor" | "kitesurf" | "gym" = "doctor";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -14,46 +38,48 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Show a simple loading bar
     const { width, height } = this.scale;
+
+    // Loading bar
     const barW = Math.min(300, width * 0.6);
-    const bar = this.add
+    this.add
       .graphics()
-      .fillStyle(0xffffff, 0.3)
+      .fillStyle(0xffffff, 0.15)
       .fillRect(width / 2 - barW / 2, height / 2 - 10, barW, 20);
+
     const fill = this.add.graphics();
-    const text = this.add
-      .text(width / 2, height / 2 + 30, "Loading…", {
+    this.add
+      .text(width / 2, height / 2 + 32, "Loading Michael's Journey…", {
         fontFamily: "monospace",
-        fontSize: "16px",
-        color: "#ffffff",
+        fontSize: "14px",
+        color: "#00c4aa",
       })
       .setOrigin(0.5);
 
     this.load.on("progress", (v: number) => {
       fill
         .clear()
-        .fillStyle(0x88ff88, 1)
+        .fillStyle(0xff6b35, 1)
         .fillRect(width / 2 - barW / 2 + 2, height / 2 - 8, (barW - 4) * v, 16);
     });
 
-    // --- Load player sprite (replace michael.png to change character) ---
-    this.load.image("player", ASSET_PATHS.player);
+    // --- All three avatar sprites ---
+    this.load.image("avatar_doctor",  ASSETS.doctor);
+    this.load.image("avatar_kitesurf", ASSETS.kitesurf);
+    this.load.image("avatar_gym",     ASSETS.gym);
 
-    // --- Load platform image ---
-    this.load.image("platform", ASSET_PATHS.platform);
+    // --- Platform ---
+    this.load.image("platform", ASSETS.platform);
 
-    // --- Load jump sound (optional — gracefully skipped if file is missing) ---
-    // To enable: drop your jump.wav into public/assets/audio/jump.wav
-    // Then uncomment the line below:
-    // this.load.audio("jump", ASSET_PATHS.jumpSound);
-
-    // --- Background image (optional) ---
-    // Uncomment and add a bg image to public/assets/background/bg.png to enable:
-    // this.load.image("background", ASSET_PATHS.background);
+    // --- Jump sound (uncomment when you add jump.wav) ---
+    // this.load.audio("jump", ASSETS.jump);
   }
 
   create() {
+    // Set default avatar on first load; preserve selection across restarts
+    if (!this.game.registry.has("selectedAvatar")) {
+      this.game.registry.set("selectedAvatar", `avatar_${DEFAULT_AVATAR}`);
+    }
     this.scene.start("MenuScene");
   }
 }
