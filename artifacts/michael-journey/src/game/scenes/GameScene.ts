@@ -151,6 +151,7 @@ export class GameScene extends Phaser.Scene {
     if      (avatarKey === "avatar_doctor")   this.animPrefix = "doc";
     else if (avatarKey === "avatar_gym")      this.animPrefix = "gym";
     else if (avatarKey === "avatar_vacation") this.animPrefix = "vacation";
+    else if (avatarKey === "avatar_wingfoil") this.animPrefix = "wingfoil";
     else                                      this.animPrefix = "";
 
     const playerKey = this.animPrefix ? `${this.animPrefix}_anim` : avatarKey;
