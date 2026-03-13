@@ -223,17 +223,28 @@ export class MusicPlayer {
         this.ctx = new Ctor() as AudioContext;
         this.masterGain = null;
       }
-      if (this.ctx.state === "suspended") {
-        this.ctx.resume().catch(() => {});
+      const ctx = this.ctx;
+      const playSilent = () => {
+        try {
+          const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+          src.stop(0.001);
+        } catch { /* ignore */ }
+      };
+      if (ctx.state === "suspended") {
+        // Resume first; once running, play the silent buffer to fully prime iOS.
+        ctx.resume().then(playSilent).catch(() => {});
+      } else {
+        playSilent();
       }
-      // iOS Chrome requires a real sound node to be started inside the gesture
-      // handler — .resume() alone is not sufficient.
-      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
-      const src = this.ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(this.ctx.destination);
-      src.start(0);
-      src.stop(0.001);
+      // If music should be playing but was interrupted, restart the scheduler.
+      if (this.isPlaying && !this.schedulerTimer && ctx.state === "running") {
+        this.nextNoteTime = ctx.currentTime + 0.05;
+        this.schedule();
+      }
     } catch { /* ignore */ }
   }
 

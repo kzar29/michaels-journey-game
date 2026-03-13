@@ -76,14 +76,16 @@ export class MenuScene extends Phaser.Scene {
     btnBg.on("pointerout",   () => btnBg.setFillStyle(0xff6b35));
     btnBg.on("pointerdown",  () => {
       btnBg.setFillStyle(0xdd5520);
-      // Unlock Web Audio on iOS/Chrome — must happen inside a direct gesture handler.
-      // 1) Our synthesiser contexts (MusicPlayer + AudioManager) — silent-buffer trick.
+      // Unlock + start music immediately.  The native touchstart listener in
+      // Game.tsx already fired (unlocking the AudioContext) so by the time this
+      // Phaser pointerdown handler runs the context is already in "running" state.
       MusicPlayer.getInstance().unlock();
       audioManager.unlock();
-      // 2) Phaser's own WebAudio context (used for WAV sound effects).
-      //    Phaser exposes .unlock() on its WebAudioSoundManager.
+      // Start music NOW — inside the gesture window — rather than 130 ms later
+      // from a setTimeout, which iOS Chrome may refuse to play from.
+      MusicPlayer.getInstance().start("doctor");
+      // Phaser's own audio context (for WAV SFX)
       try { (this.sound as any).unlock?.(); } catch { /* ignore */ }
-      // 3) Belt-and-suspenders: directly resume Phaser's context if accessible.
       try {
         const pCtx: AudioContext | undefined = (this.sound as any).context;
         if (pCtx && pCtx.state === "suspended") pCtx.resume().catch(() => {});

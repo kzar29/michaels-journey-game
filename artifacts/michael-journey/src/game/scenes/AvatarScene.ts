@@ -172,9 +172,15 @@ export class AvatarScene extends Phaser.Scene {
     // ── LET'S GO button ───────────────────────────────────────────────────────
     this.makeLetsGoButton(W, H);
 
-    // ── Start music with theme matching the first avatar ─────────────────────
+    // ── Switch to the first avatar's theme.  Music is already running from
+    //    MenuScene's START button (started inside the iOS gesture window).
+    //    If somehow it's not playing yet, start() also works as a fallback.
     const initialTheme = AVATAR_THEME[AVATARS[0].key] ?? "doctor";
-    MusicPlayer.getInstance().start(initialTheme);
+    if (MusicPlayer.getInstance().playing) {
+      MusicPlayer.getInstance().switchTheme(initialTheme);
+    } else {
+      MusicPlayer.getInstance().start(initialTheme);
+    }
 
     // Initialise display for index 0
     this.updateDisplay(0, false);
