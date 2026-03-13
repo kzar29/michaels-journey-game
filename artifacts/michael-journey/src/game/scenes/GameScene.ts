@@ -292,8 +292,15 @@ export class GameScene extends Phaser.Scene {
       this.showLevelUp(newLvl + 1);
     }
 
-    // Auto-scroll
+    // Auto-scroll camera upward
     this.cameraY -= this.scrollSpeed * dt;
+
+    // If player jumps above the top 30% of the screen, pull the camera up with them
+    const playerScreenY = this.player.y - this.cameraY;
+    if (playerScreenY < height * 0.30) {
+      this.cameraY = this.player.y - height * 0.30;
+    }
+
     this.cameras.main.scrollY = this.cameraY;
 
     // Parallax-scroll the background at 60% of camera speed
