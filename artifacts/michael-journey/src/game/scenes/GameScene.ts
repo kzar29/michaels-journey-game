@@ -21,8 +21,8 @@ import { audioManager } from "../AudioManager";
 // Speed and gap values per level (level 0 = easiest, capped at last entry)
 const LEVEL_DURATION  = 10; // seconds per level step
 const LEVEL_SPEEDS    = [55,  75,  100, 130, 165, 200, 220];
-const LEVEL_MIN_GAPS  = [90,  95,  100, 108, 115, 122, 130];
-const LEVEL_MAX_GAPS  = [140, 148, 158, 170, 182, 195, 210];
+const LEVEL_MIN_GAPS  = [108, 114, 120, 130, 138, 148, 158];
+const LEVEL_MAX_GAPS  = [165, 175, 188, 200, 215, 228, 245];
 // Jump velocity scales up with scroll speed so the player always has
 // ~120px of effective upward clearance relative to the moving camera.
 // Formula: V = 2S + sqrt(4S² + 2·g·120)  where g=800
@@ -147,7 +147,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setGravityY(PHYSICS.gravity);
     this.player.setDepth(10);
     // Doctor frames are 308×1024 with transparent headroom — boost scale slightly
-    const scaleH = this.isDoctorAnim ? height * 0.17 : height * 0.15;
+    const scaleH = this.isDoctorAnim ? height * 0.14 : height * 0.12;
     this.player.setScale(scaleH / this.player.height);
 
     // ── Doctor animations (recreate each scene start so frame changes take effect) ──
@@ -412,7 +412,7 @@ export class GameScene extends Phaser.Scene {
     const plat = this.platformGroup.create(x, y, this.platKey) as Phaser.Physics.Arcade.Sprite;
     // Scale to PLATFORMS.width; cap display height so platforms stay flat-ish
     const naturalH = (plat.height / plat.width) * PLATFORMS.width;
-    const displayH = Math.min(naturalH, 68);
+    const displayH = Math.min(naturalH, 56);
     plat.setScale(PLATFORMS.width / plat.width, displayH / plat.height).refreshBody();
     plat.setDepth(5);
     return plat;
